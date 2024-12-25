@@ -24,7 +24,7 @@ A lightning-fast command-line dictionary tool for Linux that helps you look up a
 ### Option 1: Install from Release (Recommended)
 ---
 
-**1. Download the latest `.deb` package from** ***[Releases](https://github.com/AnuragBhaskarya/wtf/releases)***
+**1. Download the latest `.deb` package from** ***[Releases](https://github.com/AnuragBhaskarya/wtf/releases)***<br>
 **2. Install using:**
 ```bash
 sudo dpkg -i wtf_1.1.0_x86_amd64.deb
