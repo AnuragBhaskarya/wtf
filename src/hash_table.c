@@ -50,7 +50,7 @@ void hash_table_insert(HashTable *table, const char *key, const char *value) {
     table->table[index] = new_node;
 }
 
-// Lookup a single key (kept for backward compatibility)
+// Lookup a single key
 char* hash_table_lookup(HashTable *table, const char *key) {
     if (!table || !key) return NULL;
 

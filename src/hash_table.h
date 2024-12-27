@@ -31,7 +31,6 @@ HashTable* create_hash_table(int size);
 void hash_table_insert(HashTable *table, const char *key, const char *value);
 char* hash_table_lookup(HashTable *table, const char *key);
 void free_hash_table(HashTable *table);
-// Add this to the existing prototypes in hash_table.h
 char* safe_lowercase(const char *str);
 
 // New function prototypes

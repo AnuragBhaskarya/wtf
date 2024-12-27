@@ -26,6 +26,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Error: Unable to get home directory.\n");
             return 1;  // Handle error if HOME directory is not found
         }
+    
     // Construct the full path to the definitions file
     char definitions_path[1024];
     snprintf(definitions_path, sizeof(definitions_path), "%s/.wtf/res/definitions.txt", home_dir);
@@ -97,7 +98,7 @@ int main(int argc, char *argv[]) {
             // Always free the definition list
             free_definition_list(definitions);
             
-            // If no match was found (this should be rare given the lookup_all function)
+            // If no match was found
             if (!match_found) {
                 printf("Lol I don't know what '%s' means.\n", term);
             }
