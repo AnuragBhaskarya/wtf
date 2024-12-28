@@ -12,6 +12,7 @@ A lightning-fast command-line dictionary tool for Linux that helps you look up a
 
 - **Quick Term Lookup**: Get definitions instantly
 - **Add Custom Definitions**: Add your own terms and definitions
+- **Remove Definitions**: Remove single or multiple definitions with interactive prompts
 - **Case-Insensitive Search**: Search terms in any case (like "linux", "Linux", or "LINUX")
 - **Simple Interface**: Easy-to-use command-line commands
 - **Local Storage**: All definitions stored locally in your home directory
@@ -60,6 +61,10 @@ Linux: An open-source operating system kernel
 - **Adding a New Term**
 ```
 wtf add Python:A high-level programming language
+```
+- **Removing a Term**
+```
+wtf remove Python
 ```
 - **Getting Help**
 ```
