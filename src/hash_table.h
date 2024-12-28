@@ -32,6 +32,8 @@ void hash_table_insert(HashTable *table, const char *key, const char *value);
 char* hash_table_lookup(HashTable *table, const char *key);
 void free_hash_table(HashTable *table);
 char* safe_lowercase(const char *str);
+int hash_table_delete_single(HashTable *table, const char *key, const char *value);
+int hash_table_delete_key(HashTable *table, const char *key);
 
 // New function prototypes
 DefinitionList* hash_table_lookup_all(HashTable *table, const char *key);

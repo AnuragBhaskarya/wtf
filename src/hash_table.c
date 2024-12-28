@@ -104,6 +104,59 @@ char* safe_lowercase(const char *str) {
     return lower;
 }
 
+int hash_table_delete_single(HashTable *table, const char *key, const char *value) {
+    if (!table || !key || !value) return 0;
+
+    unsigned int index = hash_function(key, table->size);
+    HashNode *current = table->table[index];
+    HashNode *prev = NULL;
+
+    while (current) {
+        if (strcmp(current->key, key) == 0 && strcmp(current->value, value) == 0) {
+            if (prev) {
+                prev->next = current->next;
+            } else {
+                table->table[index] = current->next;
+            }
+            free(current->key);
+            free(current->value);
+            free(current);
+            return 1;
+        }
+        prev = current;
+        current = current->next;
+    }
+    return 0;
+}
+
+int hash_table_delete_key(HashTable *table, const char *key) {
+    if (!table || !key) return 0;
+
+    unsigned int index = hash_function(key, table->size);
+    HashNode *current = table->table[index];
+    HashNode *prev = NULL;
+    int deleted = 0;
+
+    while (current) {
+        HashNode *next = current->next;
+        if (strcmp(current->key, key) == 0) {
+            if (prev) {
+                prev->next = next;
+            } else {
+                table->table[index] = next;
+            }
+            free(current->key);
+            free(current->value);
+            free(current);
+            deleted++;
+        } else {
+            prev = current;
+        }
+        current = next;
+    }
+    return deleted;
+}
+
 // Updated hash_table_lookup_all function
 // Modify the hash_table_lookup_all function in after_hash_table.c
 DefinitionList* hash_table_lookup_all(HashTable *table, const char *key) {
