@@ -67,6 +67,10 @@ endif
 	@cp -r .wtf $(ACTUAL_HOME)/
 	@cp $(DEFINITIONS_FILE) $(ACTUAL_HOME)/.wtf/res/
 	@sudo chown -R $(ACTUAL_USER):$(ACTUAL_USER) $(ACTUAL_HOME)/.wtf
+	@touch $(ACTUAL_HOME)/.wtf/res/added.txt
+	@touch $(ACTUAL_HOME)/.wtf/res/removed.txt
+	@sudo chown $(ACTUAL_USER):$(ACTUAL_USER) $(ACTUAL_HOME)/.wtf/res/added.txt
+	@sudo chown $(ACTUAL_USER):$(ACTUAL_USER) $(ACTUAL_HOME)/.wtf/res/removed.txt
 	@echo "wtf installed successfully with definitions file. You can now run 'wtf' from anywhere."
 
 # Uninstall: Remove the binary and the definitions file from /usr/local/bin

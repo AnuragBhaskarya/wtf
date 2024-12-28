@@ -91,6 +91,63 @@ char* hash_table_lookup(HashTable *table, const char *key) {
     return NULL;
 }
 
+// Add these functions to hash_table.c
+
+DefinitionList* create_definition_list(void) {
+    DefinitionList *list = malloc(sizeof(DefinitionList));
+    if (!list) return NULL;
+    
+    list->count = 0;
+    list->capacity = 10;  // Initial capacity
+    
+    list->keys = malloc(list->capacity * sizeof(char*));
+    list->definitions = malloc(list->capacity * sizeof(char*));
+    
+    if (!list->keys || !list->definitions) {
+        free(list->keys);
+        free(list->definitions);
+        free(list);
+        return NULL;
+    }
+    
+    return list;
+}
+
+void add_to_definition_list(DefinitionList *list, const char *key, const char *definition) {
+    if (!list || !key || !definition) return;
+    
+    // Check if we need to expand the arrays
+    if (list->count >= list->capacity) {
+        size_t new_capacity = list->capacity * 2;
+        char **new_keys = realloc(list->keys, new_capacity * sizeof(char*));
+        char **new_definitions = realloc(list->definitions, new_capacity * sizeof(char*));
+        
+        if (!new_keys || !new_definitions) {
+            // Handle realloc failure
+            free(new_keys);
+            free(new_definitions);
+            return;
+        }
+        
+        list->keys = new_keys;
+        list->definitions = new_definitions;
+        list->capacity = new_capacity;
+    }
+    
+    // Add the new entry
+    list->keys[list->count] = strdup(key);
+    list->definitions[list->count] = strdup(definition);
+    
+    if (!list->keys[list->count] || !list->definitions[list->count]) {
+        // Handle strdup failure
+        free(list->keys[list->count]);
+        free(list->definitions[list->count]);
+        return;
+    }
+    
+    list->count++;
+}
+
 // Safer lowercase conversion function
 char* safe_lowercase(const char *str) {
     if (!str) return NULL;
