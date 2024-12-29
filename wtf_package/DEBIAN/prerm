@@ -23,6 +23,7 @@ case "$1" in
             # Remove symbolic link if it exists
             rm -f /usr/bin/wtf
             echo "Removed directory: $USER_HOME/.wtf"
+            source $USER_HOME/.bashrc
         else
             echo "Preserving configuration during package update"
         fi
@@ -40,6 +41,7 @@ case "$1" in
         # Remove symbolic link if it exists
         rm -f /usr/bin/wtf
         echo "Purged directory: $USER_HOME/.wtf"
+        source $USER_HOME/.bashrc
         ;;
     *)
         echo "prerm called with unknown argument \`$1'" >&2
