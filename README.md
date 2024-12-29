@@ -43,7 +43,12 @@ sudo dpkg -i wtf_1.1.1_x86_amd64.deb
 git clone https://github.com/AnuragBhaskarya/wtf.git
 ```
 
-**2. build & install**
+**2. Navigate to the wtf directory:**
+```
+cd wtf
+```
+
+**3. build & install**
 ```
 make
 sudo make install
@@ -56,7 +61,6 @@ sudo make install
 **1. Clone the repository**
 ```
 git clone https://github.com/AnuragBhaskarya/wtf.git
-cd wtf
 ```
 
 **2. Navigate to the wtf directory:**
