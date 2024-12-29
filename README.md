@@ -41,7 +41,6 @@ sudo dpkg -i wtf_1.1.1_x86_amd64.deb
 **1. Clone the repository**
 ```
 git clone https://github.com/AnuragBhaskarya/wtf.git
-cd wtf
 ```
 
 **2. build & install**
