@@ -1,0 +1,14 @@
+#!/bin/bash
+
+case "$1" in
+    remove|purge)
+        USER_HOME=$(eval echo ~${SUDO_USER})
+        # Create a one-time trigger script in profile.d
+        echo '#!/bin/bash
+source ~/.bashrc
+rm -f /etc/profile.d/wtf-cleanup.sh' > /etc/profile.d/wtf-cleanup.sh
+        chmod 755 /etc/profile.d/wtf-cleanup.sh
+        ;;
+esac
+
+exit 0
