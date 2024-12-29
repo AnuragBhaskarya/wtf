@@ -62,17 +62,17 @@ cd wtf
 
 **2. Navigate to the wtf directory:**
 ```
-    cd wtf
+cd wtf
 ```
 
 **3. Run the package build script:**
 ```
-    ./makedeb.sh
+./makedeb.sh
 ```
 
 **4. Install the generated package:**
 ```
-    sudo dpkg -i wtf_*.deb
+sudo dpkg -i wtf_*.deb
 ```
 <br>
 <br>
