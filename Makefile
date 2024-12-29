@@ -16,10 +16,12 @@ DEFINITIONS_FILE = .wtf/res/definitions.txt
 # Dynamically set output based on architecture
 ifeq ($(ARCH), x86_64)
 OUTPUT = build/wtf_amd64
+CFLAGS += -march=x86-64
 else ifeq ($(ARCH), i386)
 OUTPUT = build/wtf_i386
 else
 OUTPUT = build/wtf
+CFLAGS += -m32
 endif
 
 # Default Target: Build for the current architecture
