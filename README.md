@@ -52,6 +52,31 @@ sudo make install
 <br>
 <br>
 
+### Option 3: Using the Package Build Script
+---
+**1. Clone the repository**
+```
+git clone https://github.com/AnuragBhaskarya/wtf.git
+cd wtf
+```
+
+**2. Navigate to the wtf directory:**
+```
+    cd wtf
+```
+
+**3. Run the package build script:**
+```
+    ./makedeb.sh
+```
+
+**4. Install the generated package:**
+```
+    sudo dpkg -i wtf_*.deb
+```
+<br>
+<br>
+
 ## 🎯 How to Use:
 - **Looking up a Term**
 ```
