@@ -114,6 +114,17 @@ wtf -h
 # Definitions file
 ~/.wtf/res/definitions.txt
 ```
+
+```bash
+# Added file
+~/.wtf/res/added.txt
+```
+
+```bash
+# Removed file
+~/.wtf/res/removed.txt
+```
+
 ```bash
 # Binary location
 /usr/local/bin/wtf
