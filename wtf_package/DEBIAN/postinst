@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Exit on any error
+set -e
+
 # Get the version being installed
 VERSION="$2"
 
@@ -12,7 +15,13 @@ if [ "$ARCH" = "x86_64" ]; then
 elif [ "$ARCH" = "i686" ] || [ "$ARCH" = "i386" ]; then
     BINARY="/usr/bin/wtf_i386"
 else
-    echo "Unsupported architecture: $ARCH"
+    echo "Error: Unsupported architecture: $ARCH" >&2
+    exit 1
+fi
+
+# Check if binary exists
+if [ ! -f "$BINARY" ]; then
+    echo "Error: Binary not found: $BINARY" >&2
     exit 1
 fi
 
@@ -21,6 +30,11 @@ ln -sf "$BINARY" /usr/bin/wtf
 chmod +x /usr/bin/wtf
 
 # Set up directories and files
+if [ -z "${SUDO_USER}" ]; then
+    echo "Error: SUDO_USER is not set" >&2
+    exit 1
+fi
+
 USER_HOME=$(eval echo ~${SUDO_USER})
 WTF_DIR="$USER_HOME/.wtf"
 WTF_RES_DIR="$WTF_DIR/res"
@@ -28,9 +42,10 @@ WTF_RES_DIR="$WTF_DIR/res"
 # Create directories if they don't exist
 mkdir -p "$WTF_RES_DIR"
 
-# Only copy definitions.txt if it doesn't exist or if this is a fresh install
-if [ ! -f "$WTF_RES_DIR/definitions.txt" ]; then
-    cp /.wtf/res/definitions.txt "$WTF_RES_DIR/definitions.txt"
+# Copy definitions file with error checking
+if ! cp /.wtf/res/definitions.txt "$WTF_RES_DIR/definitions.txt"; then
+    echo "Error: Failed to copy definitions.txt" >&2
+    exit 1
 fi
 
 # Create added.txt and removed.txt only if they don't exist
@@ -45,4 +60,4 @@ fi
 # Set proper ownership
 chown -R ${SUDO_USER}:${SUDO_USER} "$WTF_DIR"
 
-echo "Installed WTF for architecture: $ARCH"
+echo "Successfully installed WTF for architecture: $ARCH"
