@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# $1 (first argument) can be:
+# "remove" - Package is being removed but not upgraded
+# "upgrade" - Package is being upgraded
+# "failed-upgrade" - Previous upgrade failed
+# "purge" - Package and config files are being removed
+
+# Get the version being removed
+OLDVERSION="$2"
+# Get the new version (if this is an upgrade)
+NEWVERSION="${3:-}"
+
+case "$1" in
+    remove)
+        if [ -z "$NEWVERSION" ]; then
+            # Only remove if this is a complete removal, not an upgrade/reinstall
+            USER_HOME=$(eval echo ~${SUDO_USER})
+            rm -rf "$USER_HOME/.wtf"
+            # Remove the binaries
+            rm -f /usr/bin/wtf_amd64
+            rm -f /usr/bin/wtf_i386
+            # Remove symbolic link if it exists
+            rm -f /usr/bin/wtf
+            echo "Removed directory: $USER_HOME/.wtf"
+            source $USER_HOME/.bashrc
+        else
+            echo "Preserving configuration during package update"
+        fi
+        ;;
+    upgrade|failed-upgrade)
+        echo "Preserving configuration during upgrade"
+        ;;
+    purge)
+        # Remove everything in purge
+        USER_HOME=$(eval echo ~${SUDO_USER})
+        rm -rf "$USER_HOME/.wtf"
+        # Remove the binaries
+        rm -f /usr/bin/wtf_amd64
+        rm -f /usr/bin/wtf_i386
+        # Remove symbolic link if it exists
+        rm -f /usr/bin/wtf
+        echo "Purged directory: $USER_HOME/.wtf"
+        source $USER_HOME/.bashrc
+        ;;
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

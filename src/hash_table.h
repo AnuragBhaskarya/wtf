@@ -26,6 +26,7 @@ typedef struct {
 
 
 // Function prototypes
+DefinitionList* create_definition_list(void);
 unsigned int hash_function(const char *key, int size);
 HashTable* create_hash_table(int size);
 void hash_table_insert(HashTable *table, const char *key, const char *value);
@@ -38,5 +39,7 @@ int hash_table_delete_key(HashTable *table, const char *key);
 // New function prototypes
 DefinitionList* hash_table_lookup_all(HashTable *table, const char *key);
 void free_definition_list(DefinitionList *list);
+void add_to_definition_list(DefinitionList *list, const char *key, const char *definition);
+
 
 #endif // HASH_TABLE_H

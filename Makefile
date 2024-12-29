@@ -16,10 +16,12 @@ DEFINITIONS_FILE = .wtf/res/definitions.txt
 # Dynamically set output based on architecture
 ifeq ($(ARCH), x86_64)
 OUTPUT = build/wtf_amd64
+CFLAGS += -march=x86-64
 else ifeq ($(ARCH), i386)
 OUTPUT = build/wtf_i386
 else
 OUTPUT = build/wtf
+CFLAGS += -m32
 endif
 
 # Default Target: Build for the current architecture
@@ -56,9 +58,9 @@ ACTUAL_HOME := $(shell eval echo ~$(ACTUAL_USER))
 install: all
 	@echo "Installing wtf..."
 ifeq ($(ARCH), x86_64)
-	@sudo cp $(BINARY_AMD64) /usr/local/bin/wtf
+	@sudo cp $(BINARY_AMD64) /usr/bin/wtf
 else ifeq ($(ARCH), i386)
-	@sudo cp $(BINARY_I386) /usr/local/bin/wtf
+	@sudo cp $(BINARY_I386) /usr/bin/wtf
 else
 	@echo "Unsupported architecture: $(ARCH)"
 	@exit 1
@@ -67,12 +69,17 @@ endif
 	@cp -r .wtf $(ACTUAL_HOME)/
 	@cp $(DEFINITIONS_FILE) $(ACTUAL_HOME)/.wtf/res/
 	@sudo chown -R $(ACTUAL_USER):$(ACTUAL_USER) $(ACTUAL_HOME)/.wtf
+	@touch $(ACTUAL_HOME)/.wtf/res/added.txt
+	@touch $(ACTUAL_HOME)/.wtf/res/removed.txt
+	@sudo chown $(ACTUAL_USER):$(ACTUAL_USER) $(ACTUAL_HOME)/.wtf/res/added.txt
+	@sudo chown $(ACTUAL_USER):$(ACTUAL_USER) $(ACTUAL_HOME)/.wtf/res/removed.txt
 	@echo "wtf installed successfully with definitions file. You can now run 'wtf' from anywhere."
 
 # Uninstall: Remove the binary and the definitions file from /usr/local/bin
 uninstall:
 	@echo "Uninstalling wtf..."
-	@sudo rm -f /usr/local/bin/wtf 
+	@sudo rm -f /usr/local/bin/wtf
+	@sudo rm -f /usr/bin/wtf
 	@rm -rf $(ACTUAL_HOME)/.wtf
 	@echo "wtf and its definitions file uninstalled successfully."
 	

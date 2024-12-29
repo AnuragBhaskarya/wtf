@@ -3,8 +3,8 @@
 
 #include "hash_table.h"
 
-// Function prototypes
-void handle_is_command(HashTable *dictionary, char **args, int argc);
-void handle_add_command(const char *filename, char *entry);
+void handle_is_command(HashTable *dictionary, HashTable *removed_dict, char **args, int argc);
+void handle_add_command(HashTable *dictionary, const char *added_path, const char *term, const char *definition);
+void handle_remove_command(HashTable *dictionary, HashTable *removed_dict, const char *removed_path, char **args, int argc);
 
 #endif
