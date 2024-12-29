@@ -58,9 +58,9 @@ ACTUAL_HOME := $(shell eval echo ~$(ACTUAL_USER))
 install: all
 	@echo "Installing wtf..."
 ifeq ($(ARCH), x86_64)
-	@sudo cp $(BINARY_AMD64) /usr/local/bin/wtf
+	@sudo cp $(BINARY_AMD64) /usr/bin/wtf
 else ifeq ($(ARCH), i386)
-	@sudo cp $(BINARY_I386) /usr/local/bin/wtf
+	@sudo cp $(BINARY_I386) /usr/bin/wtf
 else
 	@echo "Unsupported architecture: $(ARCH)"
 	@exit 1
@@ -78,7 +78,8 @@ endif
 # Uninstall: Remove the binary and the definitions file from /usr/local/bin
 uninstall:
 	@echo "Uninstalling wtf..."
-	@sudo rm -f /usr/local/bin/wtf 
+	@sudo rm -f /usr/local/bin/wtf
+	@sudo rm -f /usr/bin/wtf
 	@rm -rf $(ACTUAL_HOME)/.wtf
 	@echo "wtf and its definitions file uninstalled successfully."
 	

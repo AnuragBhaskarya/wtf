@@ -1,0 +1,11 @@
+Package: wtf
+Version: 1.1.1
+Section: utils
+Priority: optional
+Architecture: all
+Depends: libc6 (>= 2.29)
+Maintainer: Anurag Bhaskarya <anuragbhaskarya@gmail.com>
+Description: A lightning-fast command-line dictionary tool for Linux
+ WTF helps you look up and manage definitions right from your terminal.
+ Simple, fast, and easy to use with features like quick term lookup,
+ adding custom definitions, and removing definitions.

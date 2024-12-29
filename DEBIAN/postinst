@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# Get the version being installed
+VERSION="$2"
+
+# Detect architecture
+ARCH=$(uname -m)
+
+# Map architectures to binaries
+if [ "$ARCH" = "x86_64" ]; then
+    BINARY="/build/wtf_amd64"
+elif [ "$ARCH" = "i686" ] || [ "$ARCH" = "i386" ]; then
+    BINARY="/build/wtf_i386"
+else
+    echo "Unsupported architecture: $ARCH"
+    exit 1
+fi
+
+# Create symlink for the correct binary
+ln -sf "$BINARY" /usr/bin/wtf
+chmod +x /usr/bin/wtf
+
+# Set up directories and files
+USER_HOME=$(eval echo ~${SUDO_USER})
+WTF_DIR="$USER_HOME/.wtf"
+WTF_RES_DIR="$WTF_DIR/res"
+
+# Create directories if they don't exist
+mkdir -p "$WTF_RES_DIR"
+
+# Only copy definitions.txt if it doesn't exist or if this is a fresh install
+if [ ! -f "$WTF_RES_DIR/definitions.txt" ]; then
+    cp /.wtf/res/definitions.txt "$WTF_RES_DIR/definitions.txt"
+fi
+
+# Create added.txt and removed.txt only if they don't exist
+if [ ! -f "$WTF_RES_DIR/added.txt" ]; then
+    touch "$WTF_RES_DIR/added.txt"
+fi
+
+if [ ! -f "$WTF_RES_DIR/removed.txt" ]; then
+    touch "$WTF_RES_DIR/removed.txt"
+fi
+
+# Set proper ownership
+chown -R ${SUDO_USER}:${SUDO_USER} "$WTF_DIR"
+
+echo "Installed WTF for architecture: $ARCH"
