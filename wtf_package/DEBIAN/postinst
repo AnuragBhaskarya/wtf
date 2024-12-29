@@ -30,7 +30,7 @@ mkdir -p "$WTF_RES_DIR"
 
 # Only copy definitions.txt if it doesn't exist or if this is a fresh install
 if [ ! -f "$WTF_RES_DIR/definitions.txt" ]; then
-    cp /usr/res/definitions.txt "$WTF_RES_DIR/definitions.txt"
+    cp /.wtf/res/definitions.txt "$WTF_RES_DIR/definitions.txt"
 fi
 
 # Create added.txt and removed.txt only if they don't exist
