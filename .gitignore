@@ -3,5 +3,3 @@ build/
 wtf
 .vscode/
 *.deb
-wtf_package/usr/bin/
-wtf_package/.wtf/res/
