@@ -15,8 +15,9 @@ void print_help() {
     printf("Usage:\n");
     printf("  wtf is <term>    - Get the definition of a term\n");
     printf("  wtf add <term>:<definition> - Add a new term and definition to the dictionary\n");
-    printf("  wtf -h | --help  - Show this help menu\n");
     printf("  wtf remove <term> - Remove definition(s) for a term\n");
+    printf("  wtf recover <term> - Recover previously removed definition(s) for a term\n");
+    printf("  wtf -h | --help  - Show this help menu\n");
 }
 
 // For the single character response:
@@ -139,6 +140,14 @@ int main(int argc, char *argv[]) {
         }
         
         handle_add_command(dictionary, added_path, term, definition);
+    } else if (strcmp(argv[1], "recover") == 0) {
+        if (argc < 3) {
+            printf("Error: No term provided. Use `wtf recover <term>`.\n");
+            free_hash_table(dictionary);
+            free_hash_table(removed_dict);
+            return 1;
+        }
+        handle_recover_command(removed_dict, removed_path, argv, argc);
     } else {
         printf("Error: Unknown command '%s'. Use `wtf -h` for help.\n", argv[1]);
     }

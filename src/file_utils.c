@@ -76,3 +76,50 @@ int add_to_added(const char *filename, const char *term, const char *definition)
     fclose(file);
     return 1;
 }
+
+int remove_from_removed(const char *filename, const char *term, const char *definition) {
+    FILE *file = fopen(filename, "r");
+    if (!file) return 0;
+    
+    // Create a temporary file
+    FILE *temp = fopen("/tmp/wtf_temp", "w");
+    if (!temp) {
+        fclose(file);
+        return 0;
+    }
+    
+    char line[256];
+    int removed = 0;
+    
+    // Copy all lines except the one to be removed
+    while (fgets(line, sizeof(line), file)) {
+        char *curr_term = strdup(line);
+        char *curr_def = strchr(curr_term, ':');
+        if (curr_def) {
+            *curr_def = '\0';
+            curr_def++;
+            char *newline = strchr(curr_def, '\n');
+            if (newline) *newline = '\0';
+            
+            if (strcmp(curr_term, term) != 0 || strcmp(curr_def, definition) != 0) {
+                fprintf(temp, "%s", line);
+            } else {
+                removed = 1;
+            }
+        }
+        free(curr_term);
+    }
+    
+    fclose(file);
+    fclose(temp);
+    
+    // Replace original file with temporary file
+    if (removed) {
+        remove(filename);
+        rename("/tmp/wtf_temp", filename);
+        return 1;
+    }
+    
+    remove("/tmp/wtf_temp");
+    return 0;
+}

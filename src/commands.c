@@ -158,3 +158,82 @@ void handle_remove_command(HashTable *dictionary, HashTable *removed_dict, const
     free_definition_list(definitions);
     free_definition_list(filtered);
 }
+
+void handle_recover_command(HashTable *removed_dict, const char *removed_path, char **args, int argc) {
+    if (argc < 3) {
+        printf("Error: No term provided. Use `wtf recover <term>`.\n");
+        return;
+    }
+
+    char term[MAX_INPUT_LENGTH] = "";
+    for (int i = 2; i < argc; i++) {
+        strcat(term, args[i]);
+        if (i < argc - 1) strcat(term, " ");
+    }
+
+    DefinitionList *removed_defs = hash_table_lookup_all(removed_dict, term);
+    if (!removed_defs) {
+        printf("No removed definitions found for '%s'.\n", term);
+        return;
+    }
+
+    if (removed_defs->count == 1) {
+        printf("Found removed definition:\n%s: %s\n", removed_defs->keys[0], removed_defs->definitions[0]);
+        printf("Are you sure you want to recover this definition? [y/N]: ");
+        
+        char response = getchar();
+        while (getchar() != '\n'); // Clear input buffer
+        
+        if (response == 'y' || response == 'Y') {
+            if (remove_from_removed(removed_path, removed_defs->keys[0], removed_defs->definitions[0])) {
+                hash_table_delete_single(removed_dict, removed_defs->keys[0], removed_defs->definitions[0]);
+                printf("Definition recovered successfully.\n");
+            } else {
+                printf("Error: Could not recover definition.\n");
+            }
+        } else {
+            printf("Operation aborted.\n");
+        }
+    } else {
+        printf("Found removed definitions:\n");
+        for (int i = 0; i < removed_defs->count; i++) {
+            printf("%d. %s: %s\n", i + 1, removed_defs->keys[i], removed_defs->definitions[i]);
+        }
+        
+        printf("Enter the numbers of definitions to recover (separated by spaces or commas): ");
+        char input[MAX_INPUT_LENGTH];
+        if (fgets(input, sizeof(input), stdin)) {
+            printf("Are you sure you want to recover these definitions? [y/N]: ");
+            char response = getchar();
+            while (getchar() != '\n');
+            
+            if (response == 'y' || response == 'Y') {
+                char *token = strtok(input, " ,\n");
+                int recovered = 0;
+                
+                while (token) {
+                    int num = atoi(token);
+                    if (num > 0 && num <= removed_defs->count) {
+                        if (remove_from_removed(removed_path, removed_defs->keys[num-1], 
+                                             removed_defs->definitions[num-1])) {
+                            hash_table_delete_single(removed_dict, removed_defs->keys[num-1], 
+                                                   removed_defs->definitions[num-1]);
+                            recovered++;
+                        }
+                    }
+                    token = strtok(NULL, " ,\n");
+                }
+                
+                if (recovered > 0) {
+                    printf("%d definition(s) recovered successfully.\n", recovered);
+                } else {
+                    printf("No definitions were recovered.\n");
+                }
+            } else {
+                printf("Operation aborted.\n");
+            }
+        }
+    }
+    
+    free_definition_list(removed_defs);
+}
