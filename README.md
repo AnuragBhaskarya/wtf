@@ -97,7 +97,7 @@ wtf add Python:A high-level programming language
 wtf remove Python
 ```
 
-- **Recovering a Term**
+- **Recovering a removed Term**
 ```
 wtf recover Python
 ```
