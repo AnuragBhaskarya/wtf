@@ -88,12 +88,20 @@ Linux: An open-source operating system kernel
 ```
 - **Adding a New Term**
 ```
+
 wtf add Python:A high-level programming language
 ```
+
 - **Removing a Term**
 ```
 wtf remove Python
 ```
+
+- **Recovering a Term**
+```
+wtf remove Python
+```
+
 - **Getting Help**
 ```
 wtf -h
