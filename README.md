@@ -99,7 +99,7 @@ wtf remove Python
 
 - **Recovering a Term**
 ```
-wtf remove Python
+wtf recover Python
 ```
 
 - **Getting Help**
