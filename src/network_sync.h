@@ -39,7 +39,7 @@ typedef struct {
 } UpdateList;
 
 // Function declarations
-static size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp);
+size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp);
 int is_network_available(void);
 void load_sync_metadata(const char *config_dir, SyncMetadata *metadata);
 void save_sync_metadata(const char *config_dir, const SyncMetadata *metadata);

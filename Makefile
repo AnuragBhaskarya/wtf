@@ -31,16 +31,16 @@ all: $(OUTPUT)
 
 # Build the binary from object files
 $(OUTPUT): $(OBJ)
-	$(CC) $(OBJ) -o $(OUTPUT)
+	$(CC) $(OBJ) $(LDFLAGS) -o $(OUTPUT)
 
 # Build for specific architectures
 amd64: CFLAGS += -march=x86-64
 amd64: $(OBJ)
-	$(CC) $(OBJ) -o $(BINARY_AMD64)
+	$(CC) $(OBJ) $(LDFLAGS) -o $(BINARY_AMD64)
 
 i386: CFLAGS += -m32
 i386: $(OBJ)
-	$(CC) $(OBJ) -o $(BINARY_I386)
+	$(CC) $(OBJ) $(LDFLAGS) -o $(BINARY_I386)
 
 # Compile each source file into an object file
 build/%.o: src/%.c

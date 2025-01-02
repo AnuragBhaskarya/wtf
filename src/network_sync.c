@@ -51,11 +51,20 @@ void load_sync_metadata(const char *config_dir, SyncMetadata *metadata) {
         return;
     }
     
-    fscanf(f, "%40s\n%ld\n%d\n%ld", 
+    int items_read = fscanf(f, "%40s\n%ld\n%d\n%ld", 
            metadata->last_commit_sha, 
            &metadata->last_sync,
            &metadata->auto_sync,
            &metadata->sync_interval);
+           
+    if (items_read != 4) {
+        // Handle error - reset to defaults
+        metadata->last_commit_sha[0] = '\0';
+        metadata->last_sync = 0;
+        metadata->auto_sync = 0;
+        metadata->sync_interval = DEFAULT_SYNC_INTERVAL;
+    }
+    
     fclose(f);
 }
 
@@ -152,7 +161,7 @@ void free_update_list(UpdateList *list) {
     free(list);
 }
 
-int sync_full_dictionary(const char *config_dir, HashTable *dictionary) {
+int sync_full_dictionary(const char *config_dir, HashTable *dictionary __attribute__((unused))) {
     CURL *curl = curl_easy_init();
     if (!curl) return 0;
     
@@ -269,7 +278,7 @@ void apply_delta_updates(HashTable *dictionary, UpdateList *updates) {
                 hash_table_insert(dictionary, update->term, update->definition);
                 break;
             case 'D':
-                hash_table_delete(dictionary, update->term);
+                hash_table_delete_key(dictionary, update->term);
                 break;
         }
     }
