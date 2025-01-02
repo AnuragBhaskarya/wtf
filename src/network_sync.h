@@ -11,7 +11,7 @@
 #define USER_AGENT "WTF-Dictionary/1.0"
 #define GITHUB_API_BASE "https://api.github.com"
 #define GITHUB_REPO "AnuragBhaskarya/wtf"
-#define DEFINITIONS_PATH "res/definitions.txt"
+#define DEFINITIONS_PATH ".wtf/res/definitions.txt"
 #define SYNC_METADATA_FILE "sync.meta"
 #define DEFAULT_SYNC_INTERVAL (24 * 60 * 60) // 24 hours
 
