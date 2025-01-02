@@ -41,6 +41,7 @@ DefinitionList* hash_table_lookup_all(HashTable *table, const char *key);
 void free_definition_list(DefinitionList *list);
 void add_to_definition_list(DefinitionList *list, const char *key, const char *definition);
 int hash_table_delete(HashTable *table, const char *key);
+void hash_table_clear(HashTable *table);
 
 
 #endif // HASH_TABLE_H

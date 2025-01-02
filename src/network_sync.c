@@ -1,4 +1,5 @@
 #include "network_sync.h"
+#include <ctype.h>
 #include <sys/stat.h>
 #include <time.h>
 
@@ -108,10 +109,60 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary) {
     
     fprintf(f, "%s", response.data);
     fclose(f);
+
+    // Clear existing dictionary
+    hash_table_clear(dictionary);
+    // Reopen the file for reading and update the dictionary
+        f = fopen(def_path, "r");
+        if (!f) {
+            free(response.data);
+            return 0;
+        }
     
-    free(response.data);
-    return 1;
-}
+        char line[1024];
+        char word[256];
+        char definition[768];
+        char *trimmed;
+    
+        while (fgets(line, sizeof(line), f)) {
+            // Skip empty lines
+            trimmed = line;
+            while (*trimmed && isspace((unsigned char)*trimmed)) {
+                trimmed++;
+            }
+            if (*trimmed == '\0' || *trimmed == '\n') {
+                continue;
+            }
+    
+            // Remove trailing newline if present
+            size_t len = strlen(trimmed);
+            if (len > 0 && trimmed[len-1] == '\n') {
+                trimmed[len-1] = '\0';
+            }
+    
+            // Parse the line with more robust format checking
+            // Look for the first occurrence of ": " to separate word and definition
+            char *separator = strstr(trimmed, ": ");
+            if (separator) {
+                size_t word_len = separator - trimmed;
+                if (word_len < sizeof(word)) {
+                    strncpy(word, trimmed, word_len);
+                    word[word_len] = '\0';
+                    
+                    // Get the definition (skip the ": " part)
+                    const char *def_start = separator + 2;
+                    if (strlen(def_start) < sizeof(definition)) {
+                        strcpy(definition, def_start);
+                        hash_table_insert(dictionary, word, definition);
+                    }
+                }
+            }
+        }
+    
+        fclose(f);
+        free(response.data);
+        return 1;
+    }
 
 int check_and_sync(const char *config_dir, HashTable *dictionary) {
     SyncMetadata metadata;

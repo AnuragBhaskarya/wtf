@@ -21,7 +21,7 @@ typedef struct {
 } NetworkResponse;
 
 typedef struct {
-    time_t last_sync;          // Last sync timestamp
+    time_t last_sync;
 } SyncMetadata;
 
 // Function declarations
