@@ -13,15 +13,15 @@
 size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
     size_t realsize = size * nmemb;
     NetworkResponse *resp = (NetworkResponse *)userp;
-
+    
     char *ptr = realloc(resp->data, resp->size + realsize + 1);
     if (!ptr) return 0;
-
+    
     resp->data = ptr;
     memcpy(&(resp->data[resp->size]), contents, realsize);
     resp->size += realsize;
     resp->data[resp->size] = 0;
-
+    
     return realsize;
 }
 
@@ -165,47 +165,61 @@ void free_update_list(UpdateList *list) {
 int sync_full_dictionary(const char *config_dir, HashTable *dictionary __attribute__((unused))) {
     CURL *curl = curl_easy_init();
     if (!curl) return 0;
-
+    
     char url[512];
-    snprintf(url, sizeof(url), "%s/repos/%s/contents/%s",
+    snprintf(url, sizeof(url), "%s/repos/%s/contents/%s", 
              GITHUB_API_BASE, GITHUB_REPO, DEFINITIONS_PATH);
-
+    
     NetworkResponse response = {0};
     response.data = malloc(1);
     response.size = 0;
-
+    
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Accept: application/vnd.github.v3.raw");
-
+    headers = curl_slist_append(headers, "Accept-Encoding: gzip, deflate");  // Add compression
+    
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, USER_AGENT);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
-
+    curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip, deflate");  // Enable automatic decompression
+    
+    printf("Debug: Starting download...\n");
     CURLcode res = curl_easy_perform(curl);
+    
+    double downloaded_size;
+    curl_easy_getinfo(curl, CURLINFO_SIZE_DOWNLOAD, &downloaded_size);
+    printf("Debug: Downloaded %.2f KB\n", downloaded_size/1024.0);
+    
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-
+    
     if (res != CURLE_OK) {
+        printf("Debug: Download failed: %s\n", curl_easy_strerror(res));
         free(response.data);
         return 0;
     }
-
-    // Save the downloaded dictionary
+    
+    // Create the res directory if it doesn't exist
+    char res_dir[512];
+    snprintf(res_dir, sizeof(res_dir), "%s/res", config_dir);
+    mkdir(res_dir, 0755);
+    
     char def_path[512];
     snprintf(def_path, sizeof(def_path), "%s/res/definitions.txt", config_dir);
-
+    
     FILE *f = fopen(def_path, "w");
     if (!f) {
         printf("Debug: Failed to open file for writing: %s\n", def_path);
         free(response.data);
         return 0;
     }
-
+    
     fprintf(f, "%s", response.data);
     fclose(f);
-
+    
+    printf("Debug: Dictionary saved to %s\n", def_path);
     free(response.data);
     return 1;
 }
@@ -213,28 +227,36 @@ int sync_full_dictionary(const char *config_dir, HashTable *dictionary __attribu
 UpdateList* get_dictionary_updates(const char *last_commit, const char *current_commit) {
     CURL *curl = curl_easy_init();
     if (!curl) return NULL;
-
+    
     char url[512];
     snprintf(url, sizeof(url), "%s/repos/%s/compare/%s...%s",
              GITHUB_API_BASE, GITHUB_REPO, last_commit, current_commit);
-
+    
     NetworkResponse response = {0};
     response.data = malloc(1);
     response.size = 0;
-
+    
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Accept: application/vnd.github.v3+json");
-
+    headers = curl_slist_append(headers, "Accept-Encoding: gzip, deflate");
+    
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, USER_AGENT);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
-
+    curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip, deflate");
+    
+    printf("Debug: Fetching updates...\n");
     CURLcode res = curl_easy_perform(curl);
+    
+    double downloaded_size;
+    curl_easy_getinfo(curl, CURLINFO_SIZE_DOWNLOAD, &downloaded_size);
+    printf("Debug: Downloaded %.2f KB\n", downloaded_size/1024.0);
+    
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-
+    
     if (res != CURLE_OK) {
         free(response.data);
         return NULL;
@@ -274,13 +296,23 @@ UpdateList* get_dictionary_updates(const char *last_commit, const char *current_
 void apply_delta_updates(HashTable *dictionary, UpdateList *updates) {
     for (size_t i = 0; i < updates->count; i++) {
         DeltaUpdate *update = &updates->updates[i];
+        
+        printf("Debug: Processing update for term '%s' with action '%c'\n", update->term, update->action);
+        
         switch (update->action) {
             case 'A':
             case 'M':
                 hash_table_insert(dictionary, update->term, update->definition);
                 break;
             case 'D':
-                hash_table_delete_key(dictionary, update->term);
+                // Add debug output before deletion
+                printf("Debug: Attempting to delete term '%s'\n", update->term);
+                if (hash_table_lookup(dictionary, update->term) != NULL) {
+                    hash_table_delete_key(dictionary, update->term);
+                    printf("Debug: Successfully deleted term '%s'\n", update->term);
+                } else {
+                    printf("Debug: Term '%s' not found in dictionary\n", update->term);
+                }
                 break;
         }
     }

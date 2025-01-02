@@ -1,5 +1,7 @@
 #ifndef NETWORK_SYNC_H
 #define NETWORK_SYNC_H
+#define COMPRESS_RESPONSE 1
+#define COMPRESSION_THRESHOLD 1024 
 
 #include <stdio.h>
 #include <stdlib.h>
