@@ -64,16 +64,44 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    char config_dir[1024];
-    char definitions_path[1024];
-    char added_path[1024];
-    char removed_path[1024];
+    char config_dir[PATH_MAX];
+    char definitions_path[PATH_MAX];
+    char added_path[PATH_MAX];
+    char removed_path[PATH_MAX];
     
-    // Construct config_dir first
-    snprintf(config_dir, sizeof(config_dir), "%s/.wtf", home_dir);
-    snprintf(definitions_path, sizeof(definitions_path), "%s/res/definitions.txt", config_dir);
-    snprintf(added_path, sizeof(added_path), "%s/res/added.txt", config_dir);
-    snprintf(removed_path, sizeof(removed_path), "%s/res/removed.txt", config_dir);
+    // Initialize pointers to NULL at declaration
+    HashTable *dictionary = NULL;
+    HashTable *removed_dict = NULL;
+    
+    // Fix sign comparison warnings by storing snprintf result in size_t
+    size_t written;
+    
+    written = (size_t)snprintf(config_dir, sizeof(config_dir), "%s/.wtf", home_dir);
+    if (written >= sizeof(config_dir)) {
+        fprintf(stderr, "Error: Path too long for config directory.\n");
+        return 1;
+    }
+    
+    written = (size_t)snprintf(definitions_path, sizeof(definitions_path), 
+                                "%s/res/definitions.txt", config_dir);
+    if (written >= sizeof(definitions_path)) {
+        fprintf(stderr, "Error: Path too long for definitions file.\n");
+        return 1;
+    }
+    
+    written = (size_t)snprintf(added_path, sizeof(added_path), 
+                                "%s/res/added.txt", config_dir);
+    if (written >= sizeof(added_path)) {
+        fprintf(stderr, "Error: Path too long for added definitions file.\n");
+        return 1;
+    }
+    
+    written = (size_t)snprintf(removed_path, sizeof(removed_path), 
+                                "%s/res/removed.txt", config_dir);
+    if (written >= sizeof(removed_path)) {
+        fprintf(stderr, "Error: Path too long for removed definitions file.\n");
+        return 1;
+    }
     
     // Check for update only once at startup and only if:
     // 1. It's been more than 2 minutes since last check
@@ -110,8 +138,22 @@ int main(int argc, char *argv[]) {
     }
 
     // Load the main dictionary and user additions into memory
-    HashTable *dictionary = create_hash_table(100);
-    HashTable *removed_dict = create_hash_table(100);
+    dictionary = create_hash_table(100);
+    if (!dictionary) {
+        fprintf(stderr, "Error: Could not create main dictionary.\n");
+        goto cleanup;
+    }
+
+    removed_dict = create_hash_table(100);
+    if (!removed_dict) {
+        fprintf(stderr, "Error: Could not create removed dictionary.\n");
+        goto cleanup;
+    }
+    
+    if (!dictionary || !removed_dict) {
+        fprintf(stderr, "Error: Could not create hash tables.\n");
+        goto cleanup;
+    }
     
     if (!load_definitions(definitions_path, dictionary)) {
         fprintf(stderr, "Error: Could not load main definitions.\n");
@@ -212,8 +254,14 @@ int main(int argc, char *argv[]) {
         }
     
     cleanup:
-        free_hash_table(dictionary);
-        free_hash_table(removed_dict);
+        if (dictionary) {
+            free_hash_table(dictionary);
+            dictionary = NULL;  // Good practice to NULL after free
+        }
+        if (removed_dict) {
+            free_hash_table(removed_dict);
+            removed_dict = NULL;
+        }
         return 0;
     
         // Free memory
