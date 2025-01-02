@@ -204,6 +204,16 @@ SyncStatus check_for_updates(const char *config_dir, char *current_sha) {
     return needs_update ? SYNC_NEEDED : SYNC_NOT_NEEDED;
 }
 
+size_t header_callback(char *buffer, size_t size, size_t nitems, void *userdata) {
+    size_t bytes = size * nitems;
+    // Check for Content-Encoding header
+    if (strncasecmp(buffer, "Content-Encoding:", 16) == 0) {
+        // For debugging if needed
+        // printf("Content-Encoding: %.*s", (int)bytes - 16, buffer + 16);
+    }
+    return bytes;
+}
+
 int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *new_sha) {
     printf("%sUpdate of the dictionary available%s\n", COLOR_GREEN, COLOR_RESET);
     printf("%sDownloading the update...%s\n", COLOR_GRAY, COLOR_RESET);
@@ -211,29 +221,45 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     CURL *curl = curl_easy_init();
     if (!curl) return 0;
     
+    // Use raw.githubusercontent.com instead of the API
     char url[512];
-    snprintf(url, sizeof(url), "%s/repos/%s/contents/%s", 
-             GITHUB_API_BASE, GITHUB_REPO, DEFINITIONS_PATH);
+    snprintf(url, sizeof(url), "https://raw.githubusercontent.com/%s/main/%s", 
+             GITHUB_REPO, DEFINITIONS_PATH);
     
     NetworkResponse response = {0};
     response.data = malloc(1);
     response.size = 0;
-    response.total_size = 0;  // Will be set by Content-Length
+    response.total_size = 0;
     response.curl = curl;
-    response.show_progress = true;  // Show progress for actual download
+    response.show_progress = true;
     
     struct curl_slist *headers = NULL;
-    headers = curl_slist_append(headers, "Accept: application/vnd.github.v3.raw");
-    headers = curl_slist_append(headers, "Accept-Encoding: gzip, deflate");
+    // Add compression headers
+    headers = curl_slist_append(headers, "Accept-Encoding: gzip");
+    headers = curl_slist_append(headers, "User-Agent: gzip");  // Some servers check this
     
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, USER_AGENT);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
-    curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip, deflate");
+    curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
+    curl_easy_setopt(curl, CURLOPT_HTTP_CONTENT_DECODING, 1L);
+    curl_easy_setopt(curl, CURLOPT_ENCODING, "gzip");
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    
+    // Add this to verify we're getting compressed data
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &response);
     
     CURLcode res = curl_easy_perform(curl);
+    
+    // Debug info to check if compression worked
+    double content_length;
+    char *content_encoding;
+    curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &content_length);
+    curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &content_encoding);
+    
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
     
