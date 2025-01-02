@@ -58,7 +58,7 @@ int is_network_available(void) {
     curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 1L);        // Reduced timeout to 1 second
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 1L); // Add connect timeout
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // Disable SSL verification for speed
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L); // Disable SSL verification for speed
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L); // Follow redirects
     
     CURLcode res = curl_easy_perform(curl);

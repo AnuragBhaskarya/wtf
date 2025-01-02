@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     }
     
     // Check for update only once at startup and only if:
-    // 1. It's been more than 2 minutes since last check
+    // 1. It's been more than interval since last check
     // 2. This is the first command of the day
     time_t current_time = time(NULL);
     SyncMetadata metadata;
@@ -174,14 +174,17 @@ int main(int argc, char *argv[]) {
             free_hash_table(removed_dict);
             goto cleanup;
         }
+        handle_is_command(dictionary, removed_dict, argv, argc);
         
-        // Check for updates before showing definition
-        SyncStatus status = check_and_sync(config_dir, dictionary);
-            if (status == SYNC_ERROR) {
-                printf("%sWarning: Could not check for dictionary updates%s\n", COLOR_RED, COLOR_RESET);
+        // Show definition immediately without checking for updates
+        // After showing the definition, check for updates in background
+        if (is_new_day && (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
+            SyncStatus status = check_and_sync(config_dir, dictionary);
+            if (status == SYNC_NEEDED) {
+                printf("\n%sNew dictionary updates downloaded for next use%s\n", COLOR_GRAY, COLOR_RESET);
             }
+        }
             
-            handle_is_command(dictionary, removed_dict, argv, argc);
     } else if (strcmp(argv[1], "remove") == 0) {
         if (argc < 3) {
             printf("Error: No term provided. Use `wtf remove <term>`.\n");
@@ -216,6 +219,10 @@ int main(int argc, char *argv[]) {
         }
         
         handle_add_command(dictionary, added_path, term, definition);
+        // Check for updates after adding
+        if (is_new_day && (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
+            check_and_sync(config_dir, dictionary);
+        }
     } else if (strcmp(argv[1], "recover") == 0) {
         if (argc < 3) {
             printf("Error: No term provided. Use `wtf recover <term>`.\n");
@@ -236,20 +243,20 @@ int main(int argc, char *argv[]) {
             save_sync_metadata(config_dir, &metadata);
         }
         if (strcmp(argv[1], "sync") == 0) {
+            SyncStatus status = check_and_sync(config_dir, dictionary);
             switch(status) {
                 case SYNC_NOT_NEEDED:
-                    printf("Dictionary is already up to date.\n");
+                    printf("%sDictionary is up to date%s\n", COLOR_GREEN, COLOR_RESET);
                     break;
                 case SYNC_NEEDED:
-                    printf("Dictionary has been updated successfully.\n");
+                    printf("%sDictionary has been updated successfully%s\n", COLOR_GREEN, COLOR_RESET);
                     break;
                 case SYNC_ERROR:
                     printf("%sError: Could not sync dictionary%s\n", COLOR_RED, COLOR_RESET);
                     break;
+                }
             }
-            goto cleanup;
-        }
-    } else {
+        } else {
             printf("Error: Unknown command '%s'. Use `wtf -h` for help.\n", argv[1]);
         }
     
