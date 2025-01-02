@@ -15,21 +15,38 @@
 #define SYNC_METADATA_FILE "sync.meta"
 #define SYNC_INTERVAL 120  // 2 minutes in seconds
 
+// ANSI color codes
+#define COLOR_GREEN "\033[0;32m"
+#define COLOR_GRAY "\033[0;37m"
+#define COLOR_RED "\033[0;31m"
+#define COLOR_RESET "\033[0m"
+
 typedef struct {
     char *data;
     size_t size;
+    size_t total_size;
+    double speed;
 } NetworkResponse;
 
 typedef struct {
     time_t last_sync;
+    char last_sha[41];  // SHA-1 hash is 40 chars + null terminator
 } SyncMetadata;
+
+typedef enum {
+    SYNC_NOT_NEEDED,
+    SYNC_NEEDED,
+    SYNC_ERROR
+} SyncStatus;
 
 // Function declarations
 size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp);
 int is_network_available(void);
 void load_sync_metadata(const char *config_dir, SyncMetadata *metadata);
 void save_sync_metadata(const char *config_dir, const SyncMetadata *metadata);
-int sync_dictionary(const char *config_dir, HashTable *dictionary);
-int check_and_sync(const char *config_dir, HashTable *dictionary);
+SyncStatus check_for_updates(const char *config_dir, char *current_sha);
+int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *new_sha);
+SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary);
+void display_progress(size_t current, size_t total, double speed);
 
 #endif

@@ -18,6 +18,7 @@ void print_help() {
     printf("  wtf add <term>:<definition> - Add a new term and definition to the dictionary\n");
     printf("  wtf remove <term> - Remove definition(s) for a term\n");
     printf("  wtf recover <term> - Recover previously removed definition(s) for a term\n");
+    printf("  wtf sync         - Force sync dictionary with latest updates\n");
     printf("  wtf -h | --help  - Show this help menu\n");
 }
 
@@ -63,23 +64,49 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    // Construct paths for all dictionary files
+    char config_dir[1024];
     char definitions_path[1024];
     char added_path[1024];
     char removed_path[1024];
     
-    snprintf(definitions_path, sizeof(definitions_path), "%s/.wtf/res/definitions.txt", home_dir);
-    snprintf(added_path, sizeof(added_path), "%s/.wtf/res/added.txt", home_dir);
-    snprintf(removed_path, sizeof(removed_path), "%s/.wtf/res/removed.txt", home_dir);
+    // Construct config_dir first
+    snprintf(config_dir, sizeof(config_dir), "%s/.wtf", home_dir);
+    snprintf(definitions_path, sizeof(definitions_path), "%s/res/definitions.txt", config_dir);
+    snprintf(added_path, sizeof(added_path), "%s/res/added.txt", config_dir);
+    snprintf(removed_path, sizeof(removed_path), "%s/res/removed.txt", config_dir);
+    
+    // Check for update only once at startup and only if:
+    // 1. It's been more than 2 minutes since last check
+    // 2. This is the first command of the day
+    time_t current_time = time(NULL);
+    SyncMetadata metadata;
+    load_sync_metadata(config_dir, &metadata);
+    
+    // Get current date parts
+    struct tm *tm_now = localtime(&current_time);
+    int current_day = tm_now->tm_mday;
+    int current_month = tm_now->tm_mon;
+    int current_year = tm_now->tm_year;
+    
+    // Get last sync date parts
+    struct tm *tm_last = localtime(&metadata.last_sync);
+    int last_day = tm_last->tm_mday;
+    int last_month = tm_last->tm_mon;
+    int last_year = tm_last->tm_year;
+    
+    // Check if it's a new day
+    int is_new_day = (current_day != last_day || 
+                        current_month != last_month || 
+                        current_year != last_year);
     
     if (argc < 2) {
         printf("Error: Missing arguments. Use `wtf -h` for help.\n");
-        return 1;
+        goto cleanup;
     }
 
     if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
         print_help();
-        return 0;
+        goto cleanup;
     }
 
     // Load the main dictionary and user additions into memory
@@ -88,16 +115,11 @@ int main(int argc, char *argv[]) {
     
     if (!load_definitions(definitions_path, dictionary)) {
         fprintf(stderr, "Error: Could not load main definitions.\n");
-        return 1;
+        goto cleanup;
     }
     
     // Load user-added definitions
-    load_definitions(added_path, dictionary);
-    
-    // Check for auto-sync at startup
-    char config_dir[1024];
-    snprintf(config_dir, sizeof(config_dir), "%s/.wtf", home_dir);
-    check_and_sync(config_dir, dictionary);
+    load_definitions(added_path, dictionary);   
     
     // Load removed definitions
     load_definitions(removed_path, removed_dict);
@@ -108,16 +130,22 @@ int main(int argc, char *argv[]) {
             printf("Error: No term provided. Use `wtf is <term>`.\n");
             free_hash_table(dictionary);
             free_hash_table(removed_dict);
-            return 1;
+            goto cleanup;
         }
-        handle_is_command(dictionary, removed_dict, argv, argc);
-    }
-    else if (strcmp(argv[1], "remove") == 0) {
+        
+        // Check for updates before showing definition
+        SyncStatus status = check_and_sync(config_dir, dictionary);
+            if (status == SYNC_ERROR) {
+                printf("%sWarning: Could not check for dictionary updates%s\n", COLOR_RED, COLOR_RESET);
+            }
+            
+            handle_is_command(dictionary, removed_dict, argv, argc);
+    } else if (strcmp(argv[1], "remove") == 0) {
         if (argc < 3) {
             printf("Error: No term provided. Use `wtf remove <term>`.\n");
             free_hash_table(dictionary);
             free_hash_table(removed_dict);
-            return 1;
+            goto cleanup;
         }
         handle_remove_command(dictionary, removed_dict, removed_path, argv, argc);
     }
@@ -126,7 +154,7 @@ int main(int argc, char *argv[]) {
             printf("Error: No term provided. Use `wtf add <term>:<definition>`.\n");
             free_hash_table(dictionary);
             free_hash_table(removed_dict);
-            return 1;
+            goto cleanup;
         }
 
         char input[MAX_INPUT_LENGTH] = "";
@@ -142,7 +170,7 @@ int main(int argc, char *argv[]) {
             printf("Error: Invalid format. Use `wtf add <term>:<definition>`.\n");
             free_hash_table(dictionary);
             free_hash_table(removed_dict);
-            return 1;
+            goto cleanup;
         }
         
         handle_add_command(dictionary, added_path, term, definition);
@@ -151,20 +179,42 @@ int main(int argc, char *argv[]) {
             printf("Error: No term provided. Use `wtf recover <term>`.\n");
             free_hash_table(dictionary);
             free_hash_table(removed_dict);
-            return 1;
+            goto cleanup;
         }
         handle_recover_command(removed_dict, removed_path, argv, argc);
-    }  else if (strcmp(argv[1], "sync") == 0) {
-            char config_dir[1024];
-            snprintf(config_dir, sizeof(config_dir), "%s/.wtf", home_dir);
-            if (sync_dictionary(config_dir, dictionary)) {
-                printf("Dictionary synchronized successfully.\n");
-            } else {
-                printf("Sync failed.\n");
+    } // Only check for updates if:
+        // 1. It's a new day and this is the first command
+        // 2. Explicit sync command is used
+    else if (strcmp(argv[1], "sync") == 0 || 
+        (is_new_day && (current_time - metadata.last_sync) >= SYNC_INTERVAL)) {
+        SyncStatus status = check_and_sync(config_dir, dictionary);
+        if (status == SYNC_NEEDED) {
+            // Dictionary was updated
+            metadata.last_sync = current_time;
+            save_sync_metadata(config_dir, &metadata);
+        }
+        if (strcmp(argv[1], "sync") == 0) {
+            switch(status) {
+                case SYNC_NOT_NEEDED:
+                    printf("Dictionary is already up to date.\n");
+                    break;
+                case SYNC_NEEDED:
+                    printf("Dictionary has been updated successfully.\n");
+                    break;
+                case SYNC_ERROR:
+                    printf("%sError: Could not sync dictionary%s\n", COLOR_RED, COLOR_RESET);
+                    break;
             }
-        } else {
+            goto cleanup;
+        }
+    } else {
             printf("Error: Unknown command '%s'. Use `wtf -h` for help.\n", argv[1]);
         }
+    
+    cleanup:
+        free_hash_table(dictionary);
+        free_hash_table(removed_dict);
+        return 0;
     
         // Free memory
         free_hash_table(dictionary);
