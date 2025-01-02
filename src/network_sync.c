@@ -56,9 +56,10 @@ int is_network_available(void) {
     
     curl_easy_setopt(curl, CURLOPT_URL, GITHUB_API_BASE);
     curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0L);        // Reduced timeout to 0 second
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 1L);        // Reduced timeout to 1 second
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 1L); // Add connect timeout
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // Disable SSL verification for speed
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L); // Follow redirects
     
     CURLcode res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
@@ -97,6 +98,10 @@ void save_sync_metadata(const char *config_dir, const SyncMetadata *metadata) {
 }
 
 SyncStatus check_for_updates(const char *config_dir, char *current_sha) {
+    // Load current metadata
+    SyncMetadata metadata;
+    load_sync_metadata(config_dir, &metadata);
+    
     CURL *curl = curl_easy_init();
     if (!curl) return SYNC_ERROR;
     
@@ -115,6 +120,8 @@ SyncStatus check_for_updates(const char *config_dir, char *current_sha) {
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 2L);         // 2 second timeout
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 1L);  // 1 second connect timeout
     
     CURLcode res = curl_easy_perform(curl);
     curl_slist_free_all(headers);
@@ -136,8 +143,12 @@ SyncStatus check_for_updates(const char *config_dir, char *current_sha) {
     strncpy(current_sha, sha_start, 40);
     current_sha[40] = '\0';
     
+    // Compare with last known SHA
+    int needs_update = (metadata.last_sha[0] == '\0' || 
+                       strcmp(current_sha, metadata.last_sha) != 0);
+    
     free(response.data);
-    return SYNC_NEEDED;
+    return needs_update ? SYNC_NEEDED : SYNC_NOT_NEEDED;
 }
 
 int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *new_sha) {
