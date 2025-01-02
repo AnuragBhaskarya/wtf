@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pedantic -std=c99 -D_POSIX_C_SOURCE=200809L -O2 -D_GNU_SOURCE
-LDFLAGS = -lcurl -ljson-c
+LDFLAGS = -lcurl -ljson-c -lz
 
 # Source Files and Paths
 SRC = src/main.c src/hash_table.c src/file_utils.c src/commands.c src/network_sync.c

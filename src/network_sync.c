@@ -222,7 +222,6 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     CURL *curl = curl_easy_init();
     if (!curl) return 0;
     
-    // Use raw.githubusercontent.com instead of the API
     char url[512];
     snprintf(url, sizeof(url), "https://raw.githubusercontent.com/%s/main/%s", 
              GITHUB_REPO, DEFINITIONS_PATH);
@@ -235,31 +234,20 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     response.show_progress = true;
     
     struct curl_slist *headers = NULL;
-    // Add compression headers
     headers = curl_slist_append(headers, "Accept-Encoding: gzip");
-    headers = curl_slist_append(headers, "User-Agent: gzip");  // Some servers check this
     
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, USER_AGENT);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
-    curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
-    curl_easy_setopt(curl, CURLOPT_HTTP_CONTENT_DECODING, 1L);
-    curl_easy_setopt(curl, CURLOPT_ENCODING, "gzip");
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     
-    // Add this to verify we're getting compressed data
+    // Add header callback to track content length
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &response);
     
     CURLcode res = curl_easy_perform(curl);
-    
-    // Debug info to check if compression worked
-    double content_length;
-    char *content_encoding;
-    curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &content_length);
-    curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &content_encoding);
     
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
@@ -270,12 +258,77 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
         return 0;
     }
     
-    // Ensure res directory exists
+    // Now decompress the downloaded data using zlib
+    unsigned char *uncompressed_data = NULL;
+    size_t uncompressed_size = 0;
+    
+    // Initialize zlib stream
+    z_stream strm = {0};
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+    
+    // Initialize for gzip decoding (16 + MAX_WBITS for gzip)
+    if (inflateInit2(&strm, 16 + MAX_WBITS) != Z_OK) {
+        printf("%sError initializing decompression%s\n", COLOR_RED, COLOR_RESET);
+        free(response.data);
+        return 0;
+    }
+    
+    // Set up input
+    strm.next_in = (Bytef *)response.data;
+    strm.avail_in = response.size;
+    
+    // Allocate output buffer (estimate 4x the compressed size)
+    size_t out_buf_size = response.size * 4;
+    uncompressed_data = malloc(out_buf_size);
+    if (!uncompressed_data) {
+        printf("%sMemory allocation error%s\n", COLOR_RED, COLOR_RESET);
+        inflateEnd(&strm);
+        free(response.data);
+        return 0;
+    }
+    
+    // Set up output
+    strm.next_out = uncompressed_data;
+    strm.avail_out = out_buf_size;
+    
+    // Decompress
+    int ret;
+    while ((ret = inflate(&strm, Z_FINISH)) != Z_STREAM_END) {
+        if (ret == Z_OK) {
+            // Need more output space
+            size_t current_size = out_buf_size;
+            out_buf_size *= 2;
+            unsigned char *temp = realloc(uncompressed_data, out_buf_size);
+            if (!temp) {
+                printf("%sMemory allocation error%s\n", COLOR_RED, COLOR_RESET);
+                inflateEnd(&strm);
+                free(uncompressed_data);
+                free(response.data);
+                return 0;
+            }
+            uncompressed_data = temp;
+            strm.next_out = uncompressed_data + current_size;
+            strm.avail_out = current_size;
+        } else {
+            printf("%sError decompressing data%s\n", COLOR_RED, COLOR_RESET);
+            inflateEnd(&strm);
+            free(uncompressed_data);
+            free(response.data);
+            return 0;
+        }
+    }
+    
+    uncompressed_size = strm.total_out;
+    inflateEnd(&strm);
+    
+    // Create res directory if it doesn't exist
     char res_dir[512];
     snprintf(res_dir, sizeof(res_dir), "%s/res", config_dir);
     mkdir(res_dir, 0755);
     
-    // Save the downloaded dictionary
+    // Save the uncompressed dictionary
     char def_path[512];
     snprintf(def_path, sizeof(def_path), "%s/res/definitions.txt", config_dir);
     
@@ -283,10 +336,12 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     if (!f) {
         printf("%sError occurred while updating%s\n", COLOR_RED, COLOR_RESET);
         free(response.data);
+        free(uncompressed_data);
         return 0;
     }
     
-    fprintf(f, "%s", response.data);
+    // Write uncompressed data to file
+    fwrite(uncompressed_data, 1, uncompressed_size, f);
     fclose(f);
     
     // Update metadata
@@ -301,7 +356,9 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     hash_table_clear(dictionary);
     load_definitions(def_path, dictionary);
     
+    // Clean up
     free(response.data);
+    free(uncompressed_data);
     return 1;
 }
 
