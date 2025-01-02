@@ -251,7 +251,6 @@ int main(int argc, char *argv[]) {
                 printf("%sDictionary is up to date%s\n", COLOR_GREEN, COLOR_RESET);
                 break;
             case SYNC_NEEDED:
-                printf("%sDictionary has been updated successfully%s\n", COLOR_GREEN, COLOR_RESET);
                 break;
             case SYNC_ERROR:
                 printf("%sError: Could not sync dictionary%s\n", COLOR_RED, COLOR_RESET);

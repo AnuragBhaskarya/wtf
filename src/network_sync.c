@@ -243,7 +243,7 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     
-    // Add header callback to track content length
+    // Adding header callback to track content length
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &response);
     
@@ -377,7 +377,7 @@ SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary, bool fo
            return SYNC_NOT_NEEDED;
        }
     
-    // Check if 2 minutes have passed since last sync check
+    // Check if interval have passed since last sync check
     if ((current_time - metadata.last_sync) >= SYNC_INTERVAL) {
         char current_sha[41];
         SyncStatus status = check_for_updates(config_dir, current_sha);
