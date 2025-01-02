@@ -178,11 +178,8 @@ int main(int argc, char *argv[]) {
         
         // Show definition immediately without checking for updates
         // After showing the definition, check for updates in background
-        if (is_new_day && (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
-            SyncStatus status = check_and_sync(config_dir, dictionary);
-            if (status == SYNC_NEEDED) {
-                printf("\n%sNew dictionary updates downloaded for next use%s\n", COLOR_GRAY, COLOR_RESET);
-            }
+        if (is_new_day || (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
+            check_and_sync(config_dir, dictionary);
         }
             
     } else if (strcmp(argv[1], "remove") == 0) {
@@ -220,7 +217,7 @@ int main(int argc, char *argv[]) {
         
         handle_add_command(dictionary, added_path, term, definition);
         // Check for updates after adding
-        if (is_new_day && (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
+        if (is_new_day || (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
             check_and_sync(config_dir, dictionary);
         }
     } else if (strcmp(argv[1], "recover") == 0) {

@@ -5,9 +5,22 @@
 #include <time.h>
 #include <zlib.h>
 
+#define COLOR_BLUE    "\033[0;34m"
+#define COLOR_CYAN    "\033[0;36m"
+#define COLOR_YELLOW  "\033[0;33m"
+
 size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
     size_t realsize = size * nmemb;
     NetworkResponse *resp = (NetworkResponse *)userp;
+    
+    // Get total size on first call if not set
+    if (resp->total_size == 0) {
+        curl_off_t cl;
+        curl_easy_getinfo(resp->curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &cl);
+        if (cl > 0) {
+            resp->total_size = cl;
+        }
+    }
     
     char *ptr = realloc(resp->data, resp->size + realsize + 1);
     if (!ptr) return 0;
@@ -17,7 +30,7 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
     resp->size += realsize;
     resp->data[resp->size] = 0;
     
-    // Calculate download speed
+    // Calculate speed
     static time_t start_time = 0;
     if (start_time == 0) start_time = time(NULL);
     time_t current_time = time(NULL);
@@ -26,8 +39,9 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
         resp->speed = (double)resp->size / elapsed;
     }
     
-    // Display progress
-    display_progress(resp->size, resp->total_size, resp->speed);
+    if (resp->show_progress) {
+        display_progress(resp->size, resp->total_size, resp->speed);
+    }
     
     return realsize;
 }
@@ -35,19 +49,57 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
 void display_progress(size_t current, size_t total, double speed) {
     if (total == 0) return;
     
-    int bar_width = 50;
+    const int bar_width = 40;
     float progress = (float)current / total;
     int filled = (int)(bar_width * progress);
     
-    printf("\r%s[", COLOR_GRAY);
+    // Clear line and move cursor to start
+    printf("\r\033[K");
+    
+    // Display progress bar
+    printf("%s[%s", COLOR_CYAN, COLOR_BLUE);
     for (int i = 0; i < bar_width; i++) {
-        if (i < filled) printf("=");
-        else printf(" ");
+        if (i < filled) {
+            printf("█");  // Full block for filled portion
+        } else if (i == filled) {
+            printf("%s▓%s", COLOR_YELLOW, COLOR_BLUE); // Half block for transition
+        } else {
+            printf("░");  // Light block for empty portion
+        }
     }
-    printf("] %.1f%% (%.2f KB/s)%s", progress * 100, speed / 1024, COLOR_RESET);
+    
+    // Calculate sizes for display
+    char size_str[32], speed_str[32];
+    if (total < 1024*1024) {
+        snprintf(size_str, sizeof(size_str), "%.1f/%.1f KB", 
+                current/1024.0, total/1024.0);
+    } else {
+        snprintf(size_str, sizeof(size_str), "%.1f/%.1f MB", 
+                current/(1024.0*1024.0), total/(1024.0*1024.0));
+    }
+    
+    if (speed < 1024) {
+        snprintf(speed_str, sizeof(speed_str), "%.0f B/s", speed);
+    } else if (speed < 1024*1024) {
+        snprintf(speed_str, sizeof(speed_str), "%.1f KB/s", speed/1024);
+    } else {
+        snprintf(speed_str, sizeof(speed_str), "%.1f MB/s", speed/(1024*1024));
+    }
+    
+    // Display statistics
+    printf("%s] %s%3.0f%% %s%s %s%s%s", 
+           COLOR_CYAN,                    // Close bracket color
+           COLOR_YELLOW, progress * 100,  // Percentage
+           COLOR_CYAN, size_str,         // Size information
+           COLOR_BLUE, speed_str,        // Speed information
+           COLOR_RESET);                 // Reset colors
+    
     fflush(stdout);
     
-    if (current == total) printf("\n");
+    // Print newline when complete
+    if (current == total) {
+        printf("\n%sDownload complete!%s\n", COLOR_GREEN, COLOR_RESET);
+    }
 }
 
 int is_network_available(void) {
@@ -111,6 +163,7 @@ SyncStatus check_for_updates(const char *config_dir, char *current_sha) {
     
     NetworkResponse response = {0};
     response.data = malloc(1);
+    response.show_progress = false; // Don't show progress for update check
     
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Accept: application/vnd.github.v3+json");
@@ -166,6 +219,8 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     response.data = malloc(1);
     response.size = 0;
     response.total_size = 0;  // Will be set by Content-Length
+    response.curl = curl;
+    response.show_progress = true;  // Show progress for actual download
     
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Accept: application/vnd.github.v3.raw");

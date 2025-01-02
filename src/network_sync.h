@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <curl/curl.h>
 #include <time.h>
 #include "hash_table.h"
@@ -13,7 +14,7 @@
 #define GITHUB_REPO "AnuragBhaskarya/wtf"
 #define DEFINITIONS_PATH ".wtf/res/definitions.txt"
 #define SYNC_METADATA_FILE "sync.meta"
-#define SYNC_INTERVAL 120 
+#define SYNC_INTERVAL 10
 
 // ANSI color codes
 #define COLOR_GREEN "\033[0;32m"
@@ -26,6 +27,8 @@ typedef struct {
     size_t size;
     size_t total_size;
     double speed;
+    CURL *curl;
+    bool show_progress;
 } NetworkResponse;
 
 typedef struct {
