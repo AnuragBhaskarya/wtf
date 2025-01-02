@@ -50,6 +50,7 @@ build/%.o: src/%.c
 # Clean: Remove object files, the binary, and copied definitions file
 clean:
 	rm -f build/*.o build/wtf* $(OUTPUT)
+	rm wtf_*.deb
 
 # Determine the correct home directory
 ACTUAL_USER := $(shell who am i | awk '{print $$1}')
