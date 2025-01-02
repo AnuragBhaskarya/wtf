@@ -205,6 +205,7 @@ SyncStatus check_for_updates(const char *config_dir, char *current_sha) {
 }
 
 size_t header_callback(char *buffer, size_t size, size_t nitems, void *userdata) {
+    (void)userdata;
     size_t bytes = size * nitems;
     // Check for Content-Encoding header
     if (strncasecmp(buffer, "Content-Encoding:", 16) == 0) {
