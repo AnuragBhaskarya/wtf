@@ -362,7 +362,7 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     return 1;
 }
 
-SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary) {
+SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary, bool force_sync) {
     if (!is_network_available()) {
         return SYNC_NOT_NEEDED;
     }
@@ -371,6 +371,11 @@ SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary) {
     load_sync_metadata(config_dir, &metadata);
     
     time_t current_time = time(NULL);
+    
+    // Check interval unless force_sync is true
+       if (!force_sync && (current_time - metadata.last_sync) < SYNC_INTERVAL) {
+           return SYNC_NOT_NEEDED;
+       }
     
     // Check if 2 minutes have passed since last sync check
     if ((current_time - metadata.last_sync) >= SYNC_INTERVAL) {

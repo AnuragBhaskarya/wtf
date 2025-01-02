@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
         // Show definition immediately without checking for updates
         // After showing the definition, check for updates in background
         if (is_new_day || (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
-            check_and_sync(config_dir, dictionary);
+            check_and_sync(config_dir, dictionary, false);
         }
             
     } else if (strcmp(argv[1], "remove") == 0) {
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
         handle_add_command(dictionary, added_path, term, definition);
         // Check for updates after adding
         if (is_new_day || (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
-            check_and_sync(config_dir, dictionary);
+            check_and_sync(config_dir, dictionary, false);
         }
     } else if (strcmp(argv[1], "recover") == 0) {
         if (argc < 3) {
@@ -229,33 +229,47 @@ int main(int argc, char *argv[]) {
         }
         handle_recover_command(removed_dict, removed_path, argv, argc);
     } // Only check for updates if:
-        // 1. It's a new day and this is the first command
-        // 2. Explicit sync command is used
-    else if (strcmp(argv[1], "sync") == 0 || 
-        (is_new_day && (current_time - metadata.last_sync) >= SYNC_INTERVAL)) {
-        SyncStatus status = check_and_sync(config_dir, dictionary);
+    // 1. It's a new day and this is the first command
+    // 2. Explicit sync command is used
+    else if (strcmp(argv[1], "sync") == 0) {
+        // Force sync when explicit command is used
+        char current_sha[41] = {0};
+        SyncStatus status = check_and_sync(config_dir, dictionary, true);
+        if (status == SYNC_NEEDED) {
+            // Update metadata for explicit sync
+            SyncMetadata metadata;
+            metadata.last_sync = time(NULL);
+            // Get and save the current SHA
+            check_for_updates(config_dir, current_sha);
+            strncpy(metadata.last_sha, current_sha, sizeof(metadata.last_sha) - 1);
+            metadata.last_sha[sizeof(metadata.last_sha) - 1] = '\0';  // Ensure null-termination
+            save_sync_metadata(config_dir, &metadata);
+        }
+    
+        switch(status) {
+            case SYNC_NOT_NEEDED:
+                printf("%sDictionary is up to date%s\n", COLOR_GREEN, COLOR_RESET);
+                break;
+            case SYNC_NEEDED:
+                printf("%sDictionary has been updated successfully%s\n", COLOR_GREEN, COLOR_RESET);
+                break;
+            case SYNC_ERROR:
+                printf("%sError: Could not sync dictionary%s\n", COLOR_RED, COLOR_RESET);
+                break;
+        }
+    }
+    // Handle automatic updates for other commands
+    else if (is_new_day || (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
+        SyncStatus status = check_and_sync(config_dir, dictionary, false);
         if (status == SYNC_NEEDED) {
             // Dictionary was updated
             metadata.last_sync = current_time;
             save_sync_metadata(config_dir, &metadata);
         }
-        if (strcmp(argv[1], "sync") == 0) {
-            SyncStatus status = check_and_sync(config_dir, dictionary);
-            switch(status) {
-                case SYNC_NOT_NEEDED:
-                    printf("%sDictionary is up to date%s\n", COLOR_GREEN, COLOR_RESET);
-                    break;
-                case SYNC_NEEDED:
-                    printf("%sDictionary has been updated successfully%s\n", COLOR_GREEN, COLOR_RESET);
-                    break;
-                case SYNC_ERROR:
-                    printf("%sError: Could not sync dictionary%s\n", COLOR_RED, COLOR_RESET);
-                    break;
-                }
-            }
-        } else {
-            printf("Error: Unknown command '%s'. Use `wtf -h` for help.\n", argv[1]);
-        }
+    } 
+    else {
+        printf("Error: Unknown command '%s'. Use `wtf -h` for help.\n", argv[1]);
+    }
     
     cleanup:
         if (dictionary) {

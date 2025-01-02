@@ -49,7 +49,7 @@ void load_sync_metadata(const char *config_dir, SyncMetadata *metadata);
 void save_sync_metadata(const char *config_dir, const SyncMetadata *metadata);
 SyncStatus check_for_updates(const char *config_dir, char *current_sha);
 int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *new_sha);
-SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary);
+SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary, bool force_sync);
 void display_progress(size_t current, size_t total, double speed);
 size_t header_callback(char *buffer, size_t size, size_t nitems, void *userdata);
 
