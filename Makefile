@@ -1,9 +1,10 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pedantic -std=c99 -D_POSIX_C_SOURCE=200809L -O2 -D_GNU_SOURCE
+LDFLAGS = -lcurl -ljson-c
 
 # Source Files and Paths
-SRC = src/main.c src/hash_table.c src/file_utils.c src/commands.c
-OBJ = build/main.o build/hash_table.o build/file_utils.o build/commands.o
+SRC = src/main.c src/hash_table.c src/file_utils.c src/commands.c src/network_sync.c
+OBJ = build/main.o build/hash_table.o build/file_utils.o build/commands.o build/network_sync.o
 
 # Architectures and Output Binaries
 ARCH := $(shell uname -m)

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "hash_table.h"
 #include "file_utils.h"
+#include "network_sync.h"
 #include "commands.h"
 #include <limits.h>
 #include <unistd.h>
@@ -93,6 +94,11 @@ int main(int argc, char *argv[]) {
     // Load user-added definitions
     load_definitions(added_path, dictionary);
     
+    // Check for auto-sync at startup
+    char config_dir[1024];
+    snprintf(config_dir, sizeof(config_dir), "%s/.wtf", home_dir);
+    check_and_auto_sync(config_dir, dictionary);
+    
     // Load removed definitions
     load_definitions(removed_path, removed_dict);
 
@@ -148,7 +154,72 @@ int main(int argc, char *argv[]) {
             return 1;
         }
         handle_recover_command(removed_dict, removed_path, argv, argc);
-    } else {
+    } else if (strcmp(argv[1], "sync") == 0) {
+            // Get config directory path
+            char config_dir[1024];
+            snprintf(config_dir, sizeof(config_dir), "%s/.wtf", home_dir);
+            
+            if (sync_delta_updates(config_dir, dictionary)) {
+                // Save synced definitions
+                save_definitions(definitions_path, dictionary);
+                printf("Dictionary synchronized successfully.\n");
+            } else {
+                printf("Sync failed or dictionary is already up to date.\n");
+            }
+        } else if (strcmp(argv[1], "config") == 0) {
+            if (argc < 4) {
+                printf("Usage:\n");
+                printf("  wtf config auto-sync [on|off]\n");
+                printf("  wtf config sync-interval [hours]\n");
+                free_hash_table(dictionary);
+                free_hash_table(removed_dict);
+                return 1;
+            }
+    
+            char config_dir[1024];
+            snprintf(config_dir, sizeof(config_dir), "%s/.wtf", home_dir);
+            
+            SyncMetadata metadata;
+            load_sync_metadata(config_dir, &metadata);
+    
+            if (strcmp(argv[2], "auto-sync") == 0) {
+                if (strcmp(argv[3], "on") == 0) {
+                    metadata.auto_sync = 1;
+                    printf("Auto-sync enabled.\n");
+                } else if (strcmp(argv[3], "off") == 0) {
+                    metadata.auto_sync = 0;
+                    printf("Auto-sync disabled.\n");
+                } else {
+                    printf("Invalid value. Use 'on' or 'off'.\n");
+                    free_hash_table(dictionary);
+                    free_hash_table(removed_dict);
+                    return 1;
+                }
+            } else if (strcmp(argv[2], "sync-interval") == 0) {
+                // Special testing mode for intervals less than 1 hour
+                if (strcmp(argv[3], "test") == 0) {
+                    metadata.sync_interval = 5; // 5 seconds for testing
+                    printf("Test mode: Sync interval set to 5 seconds.\n");
+                } else {
+                    int hours = atoi(argv[3]);
+                    if (hours <= 0) {
+                        printf("Invalid interval. Please specify a positive number of hours.\n");
+                        free_hash_table(dictionary);
+                        free_hash_table(removed_dict);
+                        return 1;
+                    }
+                    metadata.sync_interval = hours * 3600; // Convert hours to seconds
+                    printf("Sync interval set to %d hours.\n", hours);
+                }
+            } else {
+                printf("Unknown config option. Use 'auto-sync' or 'sync-interval'.\n");
+                free_hash_table(dictionary);
+                free_hash_table(removed_dict);
+                return 1;
+            }
+            
+            save_sync_metadata(config_dir, &metadata);
+        } else {
         printf("Error: Unknown command '%s'. Use `wtf -h` for help.\n", argv[1]);
     }
 
