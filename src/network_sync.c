@@ -258,7 +258,7 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
         return 0;
     }
     
-    // Now decompress the downloaded data using zlib
+    //decompress the downloaded data using zlib
     unsigned char *uncompressed_data = NULL;
     size_t uncompressed_size = 0;
     

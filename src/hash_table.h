@@ -14,10 +14,10 @@ typedef struct {
     HashNode **table;
 } HashTable;
 
-// New structure to hold multiple definitions
+//to hold multiple definitions
 typedef struct {
     char **definitions;
-    char **keys;  // New field to store original keys
+    char **keys;  //to store original keys
     int count;
     int capacity;
 } DefinitionList;
