@@ -377,14 +377,11 @@ SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary, bool fo
            return SYNC_NOT_NEEDED;
        }
     
-    // Check if interval have passed since last sync check
-    if ((current_time - metadata.last_sync) >= SYNC_INTERVAL) {
         char current_sha[41];
         SyncStatus status = check_for_updates(config_dir, current_sha);
         
         if (status == SYNC_ERROR) {
             return SYNC_ERROR;
-        }
         
         // Compare SHA with last known SHA
         if (strcmp(current_sha, metadata.last_sha) != 0) {
