@@ -369,35 +369,33 @@ SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary, bool fo
     
     SyncMetadata metadata;
     load_sync_metadata(config_dir, &metadata);
-    
     time_t current_time = time(NULL);
     
-    // Check interval unless force_sync is true
-       if (!force_sync && (current_time - metadata.last_sync) < SYNC_INTERVAL) {
-           return SYNC_NOT_NEEDED;
-       }
+    // Only check interval if not forcing sync
+    if (!force_sync && (current_time - metadata.last_sync) < SYNC_INTERVAL) {
+        return SYNC_NOT_NEEDED;
+    }
     
-        char current_sha[41];
-        SyncStatus status = check_for_updates(config_dir, current_sha);
-        
-        if (status == SYNC_ERROR) {
-            return SYNC_ERROR;
-        
-        // Compare SHA with last known SHA
-        if (strcmp(current_sha, metadata.last_sha) != 0) {
-            // SHA different - update needed
-            if (sync_dictionary(config_dir, dictionary, current_sha)) {
-                return SYNC_NEEDED;  // Successfully updated
-            } else {
-                return SYNC_ERROR;   // Update failed
-            }
+    // Always check for updates when we get here
+    char current_sha[41];
+    SyncStatus status = check_for_updates(config_dir, current_sha);
+    
+    if (status == SYNC_ERROR) {
+        return SYNC_ERROR;
+    }
+    
+    // Compare SHA with last known SHA
+    if (strcmp(current_sha, metadata.last_sha) != 0) {
+        // SHA different - update needed
+        if (sync_dictionary(config_dir, dictionary, current_sha)) {
+            return SYNC_NEEDED;  // Successfully updated
         } else {
-            // No update needed, but update last sync time
-            metadata.last_sync = current_time;
-            save_sync_metadata(config_dir, &metadata);
-            return SYNC_NOT_NEEDED;
+            return SYNC_ERROR;   // Update failed
         }
     }
     
+    // No update needed, but update last sync time
+    metadata.last_sync = current_time;
+    save_sync_metadata(config_dir, &metadata);
     return SYNC_NOT_NEEDED;
 }
