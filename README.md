@@ -23,7 +23,8 @@ A lightning-fast command-line dictionary tool for Linux that helps you look up a
 ## 🎨 Visual Elements
 
 ---
-![updating_wide](https://github.com/user-attachments/assets/2b6f1728-128a-413d-b469-d94871625304)
+![update](https://github.com/user-attachments/assets/74e9840f-7fa0-4156-bebf-39685b0e908a)
+
 <br>
 Our CLI features an elegant and informative update interface:
 
