@@ -364,7 +364,7 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
 
 SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary, bool force_sync) {
     if (!is_network_available()) {
-        return SYNC_NOT_NEEDED;
+        return SYNC_NO_INTERNET;
     }
     
     SyncMetadata metadata;

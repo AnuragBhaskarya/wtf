@@ -14,7 +14,7 @@
 #define GITHUB_REPO "AnuragBhaskarya/wtf"
 #define DEFINITIONS_PATH ".wtf/res/definitions.txt"
 #define SYNC_METADATA_FILE "sync.meta"
-#define SYNC_INTERVAL (3 * 60 * 60)
+#define SYNC_INTERVAL 10
 
 // ANSI color codes
 #define COLOR_GREEN "\033[0;32m"
@@ -39,7 +39,8 @@ typedef struct {
 typedef enum {
     SYNC_NOT_NEEDED,
     SYNC_NEEDED,
-    SYNC_ERROR
+    SYNC_ERROR,
+    SYNC_NO_INTERNET
 } SyncStatus;
 
 // Function declarations

@@ -250,6 +250,9 @@ int main(int argc, char *argv[]) {
             case SYNC_NOT_NEEDED:
                 printf("%sDictionary is up to date%s\n", COLOR_GREEN, COLOR_RESET);
                 break;
+            case SYNC_NO_INTERNET:
+                printf("%sconnect to the internet%s\n", COLOR_RED, COLOR_RESET);
+                break;
             case SYNC_NEEDED:
                 break;
             case SYNC_ERROR:
