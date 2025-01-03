@@ -6,8 +6,10 @@
 #include <zlib.h>
 
 #define COLOR_BLUE    "\033[0;34m"
+#define COLOR_UB_BLUE    "\033[1;4;34m"
 #define COLOR_CYAN    "\033[0;36m"
 #define COLOR_YELLOW  "\033[0;33m"
+#define COLOR_CYAN_BOLD    "\033[1;36m"
 
 size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
     size_t realsize = size * nmemb;
@@ -98,7 +100,7 @@ void display_progress(size_t current, size_t total, double speed) {
     
     // Print newline when complete
     if (current == total) {
-        printf("\n%sDownload complete!%s\n", COLOR_GREEN, COLOR_RESET);
+        printf("\n\n%sDownload complete.%s\n", COLOR_CYAN, COLOR_RESET);
     }
 }
 
@@ -216,8 +218,8 @@ size_t header_callback(char *buffer, size_t size, size_t nitems, void *userdata)
 }
 
 int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *new_sha) {
-    printf("%sUpdate of the dictionary available%s\n", COLOR_GREEN, COLOR_RESET);
-    printf("%sDownloading the update...%s\n", COLOR_GRAY, COLOR_RESET);
+    printf("%sAn update of the dictionary available!%s\n", COLOR_GREEN,COLOR_RESET);
+    printf("%sDownloading the update...%s\n\n", COLOR_YELLOW, COLOR_RESET);
     
     CURL *curl = curl_easy_init();
     if (!curl) return 0;
@@ -350,7 +352,7 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     strncpy(metadata.last_sha, new_sha, sizeof(metadata.last_sha) - 1);
     save_sync_metadata(config_dir, &metadata);
     
-    printf("%sUpdate Successful!%s\n", COLOR_GREEN, COLOR_RESET);
+    printf("%sUpdate Successful!%s\n", COLOR_CYAN_BOLD, COLOR_RESET);
     
     // Clear and reload dictionary
     hash_table_clear(dictionary);
