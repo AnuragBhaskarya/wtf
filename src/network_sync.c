@@ -373,6 +373,20 @@ SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary, bool fo
     load_sync_metadata(config_dir, &metadata);
     time_t current_time = time(NULL);
     
+    if (force_sync) {
+        char current_sha[41];
+        // Get current SHA just for updating metadata
+        if (check_for_updates(config_dir, current_sha) == SYNC_ERROR) {
+            return SYNC_ERROR;
+        }
+        // Force sync regardless of SHA
+        if (sync_dictionary(config_dir, dictionary, current_sha)) {
+            return SYNC_NEEDED;
+        } else {
+            return SYNC_ERROR;
+        }
+    }
+    
     // Only check interval if not forcing sync
     if (!force_sync && (current_time - metadata.last_sync) < SYNC_INTERVAL) {
         return SYNC_NOT_NEEDED;

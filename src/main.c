@@ -18,7 +18,8 @@ void print_help() {
     printf("  wtf add <term>:<definition> - Add a new term and definition to the dictionary\n");
     printf("  wtf remove <term> - Remove definition(s) for a term\n");
     printf("  wtf recover <term> - Recover previously removed definition(s) for a term\n");
-    printf("  wtf sync         - Force sync dictionary with latest updates\n");
+    printf("  wtf sync         - Sync dictionary with latest updates\n");
+    printf("  wtf sync --force - Force sync dictionary with latest updates \n");
     printf("  wtf -h | --help  - Show this help menu\n");
 }
 
@@ -233,8 +234,13 @@ int main(int argc, char *argv[]) {
     // 2. Explicit sync command is used
     else if (strcmp(argv[1], "sync") == 0) {
         // Force sync when explicit command is used
+        bool force_sync = false;
+        // Check if --force parameter is provided
+        if (argc > 2 && strcmp(argv[2], "--force") == 0) {
+            force_sync = true;
+        }
         char current_sha[41] = {0};
-        SyncStatus status = check_and_sync(config_dir, dictionary, true);
+        SyncStatus status = check_and_sync(config_dir, dictionary, force_sync);
         if (status == SYNC_NEEDED) {
             // Update metadata for explicit sync
             SyncMetadata metadata;
@@ -258,6 +264,15 @@ int main(int argc, char *argv[]) {
             case SYNC_ERROR:
                 printf("%sError: Could not sync dictionary%s\n", COLOR_RED, COLOR_RESET);
                 break;
+        }
+        
+        if (status == SYNC_NEEDED) {
+            SyncMetadata metadata;
+            metadata.last_sync = time(NULL);
+            check_for_updates(config_dir, current_sha);
+            strncpy(metadata.last_sha, current_sha, sizeof(metadata.last_sha) - 1);
+            metadata.last_sha[sizeof(metadata.last_sha) - 1] = '\0';
+            save_sync_metadata(config_dir, &metadata);
         }
     }
     // Handle automatic updates for other commands
