@@ -16,6 +16,29 @@ A lightning-fast command-line dictionary tool for Linux that helps you look up a
 - **Case-Insensitive Search**: Search terms in any case (like "linux", "Linux", or "LINUX")
 - **Simple Interface**: Easy-to-use command-line commands
 - **Local Storage**: All definitions stored locally in your home directory
+- **Auto-Update**: Dictionary gets updates if the repo has an update. (automatically or forced)
+<br>
+<br>
+
+## 🎨 Visual Elements
+
+---
+![updating_wide](https://github.com/user-attachments/assets/2b6f1728-128a-413d-b469-d94871625304)
+<br>
+Our CLI features an elegant and informative update interface:
+
+## 📊 Progress Visualization
+- **Rich Progress Bar**: A vibrant, full-width progress bar `[████████████]` shows real-time download status
+- **Dynamic Updates**: Live display of download speed (e.g., `858.9 KB/s`)
+- **Size Information**: Clear indication of download progress (`2.5/2.5 MB`)
+
+## 🎨 Aesthetic Elements
+- **Clean Typography**: Crisp, coloured font for optimal terminal readability
+- **Status Messages**: Clear, concise update notifications
+  - "`An update of the dictionary available!`"
+  - "`Downloading the update...`"
+  - "`Download complete.`"
+  - "`Update Successful!`
 <br>
 <br>
 
@@ -28,7 +51,7 @@ A lightning-fast command-line dictionary tool for Linux that helps you look up a
 **1. Download the latest `.deb` package from** ***[Releases](https://github.com/AnuragBhaskarya/wtf/releases)***<br>
 **2. Install using:**
 ```bash
-sudo dpkg -i wtf_1.1.1_x86_amd64.deb
+sudo dpkg -i wtf_*x86_amd64.deb
 ```
 <br>
 <br>
@@ -101,6 +124,15 @@ wtf remove Python
 ```
 wtf recover Python
 ```
+- **To update/Sync Dictionary file (definitions.txt)**
+
+```
+wtf sync   #For regular updates & checks
+```
+```
+wtf sync --force    #To force update
+```
+
 
 - **Getting Help**
 ```
