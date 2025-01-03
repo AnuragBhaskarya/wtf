@@ -1,4 +1,3 @@
-// file_utils.h
 #ifndef FILE_UTILS_H
 #define FILE_UTILS_H
 
@@ -11,5 +10,6 @@ int is_definition_removed(const char *term, const char *definition, HashTable *r
 int add_to_removed(const char *filename, const char *term, const char *definition);
 int add_to_added(const char *filename, const char *term, const char *definition);
 int remove_from_removed(const char *filename, const char *term, const char *definition);
+int save_definitions(const char *filename, HashTable *table);
 
 #endif

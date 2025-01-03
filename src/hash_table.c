@@ -359,3 +359,20 @@ void free_hash_table(HashTable *table) {
     free(table->table);
     free(table);
 }
+
+void hash_table_clear(HashTable *table) {
+    if (!table) return;
+
+    // Free all nodes in each bucket
+    for (int i = 0; i < table->size; i++) {
+        HashNode *node = table->table[i];
+        while (node) {
+            HashNode *temp = node;
+            node = node->next;
+            free(temp->key);
+            free(temp->value);
+            free(temp);
+        }
+        table->table[i] = NULL;  // Clear the bucket
+    }
+}

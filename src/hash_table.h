@@ -14,10 +14,10 @@ typedef struct {
     HashNode **table;
 } HashTable;
 
-// New structure to hold multiple definitions
+//to hold multiple definitions
 typedef struct {
     char **definitions;
-    char **keys;  // New field to store original keys
+    char **keys;  //to store original keys
     int count;
     int capacity;
 } DefinitionList;
@@ -40,6 +40,8 @@ int hash_table_delete_key(HashTable *table, const char *key);
 DefinitionList* hash_table_lookup_all(HashTable *table, const char *key);
 void free_definition_list(DefinitionList *list);
 void add_to_definition_list(DefinitionList *list, const char *key, const char *definition);
+int hash_table_delete(HashTable *table, const char *key);
+void hash_table_clear(HashTable *table);
 
 
 #endif // HASH_TABLE_H

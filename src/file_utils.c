@@ -123,3 +123,21 @@ int remove_from_removed(const char *filename, const char *term, const char *defi
     remove("/tmp/wtf_temp");
     return 0;
 }
+int save_definitions(const char *filename, HashTable *table) {
+    FILE *file = fopen(filename, "w");
+    if (!file) {
+        return 0;
+    }
+
+    // Iterate through the hash table and save each entry
+    for (int i = 0; i < table->size; i++) {
+        HashNode *current = table->table[i];
+        while (current != NULL) {
+            fprintf(file, "%s:%s\n", current->key, current->value);
+            current = current->next;
+        }
+    }
+
+    fclose(file);
+    return 1;
+}

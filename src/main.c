@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "hash_table.h"
 #include "file_utils.h"
+#include "network_sync.h"
 #include "commands.h"
 #include <limits.h>
 #include <unistd.h>
@@ -17,6 +18,8 @@ void print_help() {
     printf("  wtf add <term>:<definition> - Add a new term and definition to the dictionary\n");
     printf("  wtf remove <term> - Remove definition(s) for a term\n");
     printf("  wtf recover <term> - Recover previously removed definition(s) for a term\n");
+    printf("  wtf sync         - Sync dictionary with latest updates\n");
+    printf("  wtf sync --force - Force sync dictionary with latest updates \n");
     printf("  wtf -h | --help  - Show this help menu\n");
 }
 
@@ -62,36 +65,104 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    // Construct paths for all dictionary files
-    char definitions_path[1024];
-    char added_path[1024];
-    char removed_path[1024];
+    char config_dir[PATH_MAX];
+    char definitions_path[PATH_MAX];
+    char added_path[PATH_MAX];
+    char removed_path[PATH_MAX];
     
-    snprintf(definitions_path, sizeof(definitions_path), "%s/.wtf/res/definitions.txt", home_dir);
-    snprintf(added_path, sizeof(added_path), "%s/.wtf/res/added.txt", home_dir);
-    snprintf(removed_path, sizeof(removed_path), "%s/.wtf/res/removed.txt", home_dir);
+    // Initialize pointers to NULL at declaration
+    HashTable *dictionary = NULL;
+    HashTable *removed_dict = NULL;
+    
+    // Fix sign comparison warnings by storing snprintf result in size_t
+    size_t written;
+    
+    written = (size_t)snprintf(config_dir, sizeof(config_dir), "%s/.wtf", home_dir);
+    if (written >= sizeof(config_dir)) {
+        fprintf(stderr, "Error: Path too long for config directory.\n");
+        return 1;
+    }
+    
+    written = (size_t)snprintf(definitions_path, sizeof(definitions_path), 
+                                "%s/res/definitions.txt", config_dir);
+    if (written >= sizeof(definitions_path)) {
+        fprintf(stderr, "Error: Path too long for definitions file.\n");
+        return 1;
+    }
+    
+    written = (size_t)snprintf(added_path, sizeof(added_path), 
+                                "%s/res/added.txt", config_dir);
+    if (written >= sizeof(added_path)) {
+        fprintf(stderr, "Error: Path too long for added definitions file.\n");
+        return 1;
+    }
+    
+    written = (size_t)snprintf(removed_path, sizeof(removed_path), 
+                                "%s/res/removed.txt", config_dir);
+    if (written >= sizeof(removed_path)) {
+        fprintf(stderr, "Error: Path too long for removed definitions file.\n");
+        return 1;
+    }
+    
+    // Check for update only once at startup and only if:
+    // 1. It's been more than interval since last check
+    // 2. This is the first command of the day
+    time_t current_time = time(NULL);
+    SyncMetadata metadata;
+    load_sync_metadata(config_dir, &metadata);
+    
+    // Get current date parts
+    struct tm *tm_now = localtime(&current_time);
+    int current_day = tm_now->tm_mday;
+    int current_month = tm_now->tm_mon;
+    int current_year = tm_now->tm_year;
+    
+    // Get last sync date parts
+    struct tm *tm_last = localtime(&metadata.last_sync);
+    int last_day = tm_last->tm_mday;
+    int last_month = tm_last->tm_mon;
+    int last_year = tm_last->tm_year;
+    
+    // Check if it's a new day
+    int is_new_day = (current_day != last_day || 
+                        current_month != last_month || 
+                        current_year != last_year);
     
     if (argc < 2) {
         printf("Error: Missing arguments. Use `wtf -h` for help.\n");
-        return 1;
+        goto cleanup;
     }
 
     if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
         print_help();
-        return 0;
+        goto cleanup;
     }
 
     // Load the main dictionary and user additions into memory
-    HashTable *dictionary = create_hash_table(100);
-    HashTable *removed_dict = create_hash_table(100);
+    dictionary = create_hash_table(100);
+    if (!dictionary) {
+        fprintf(stderr, "Error: Could not create main dictionary.\n");
+        goto cleanup;
+    }
+
+    removed_dict = create_hash_table(100);
+    if (!removed_dict) {
+        fprintf(stderr, "Error: Could not create removed dictionary.\n");
+        goto cleanup;
+    }
+    
+    if (!dictionary || !removed_dict) {
+        fprintf(stderr, "Error: Could not create hash tables.\n");
+        goto cleanup;
+    }
     
     if (!load_definitions(definitions_path, dictionary)) {
         fprintf(stderr, "Error: Could not load main definitions.\n");
-        return 1;
+        goto cleanup;
     }
     
     // Load user-added definitions
-    load_definitions(added_path, dictionary);
+    load_definitions(added_path, dictionary);   
     
     // Load removed definitions
     load_definitions(removed_path, removed_dict);
@@ -102,16 +173,22 @@ int main(int argc, char *argv[]) {
             printf("Error: No term provided. Use `wtf is <term>`.\n");
             free_hash_table(dictionary);
             free_hash_table(removed_dict);
-            return 1;
+            goto cleanup;
         }
         handle_is_command(dictionary, removed_dict, argv, argc);
-    }
-    else if (strcmp(argv[1], "remove") == 0) {
+        
+        // Show definition immediately without checking for updates
+        // After showing the definition, check for updates in background
+        if (is_new_day || (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
+            check_and_sync(config_dir, dictionary, false);
+        }
+            
+    } else if (strcmp(argv[1], "remove") == 0) {
         if (argc < 3) {
             printf("Error: No term provided. Use `wtf remove <term>`.\n");
             free_hash_table(dictionary);
             free_hash_table(removed_dict);
-            return 1;
+            goto cleanup;
         }
         handle_remove_command(dictionary, removed_dict, removed_path, argv, argc);
     }
@@ -120,7 +197,7 @@ int main(int argc, char *argv[]) {
             printf("Error: No term provided. Use `wtf add <term>:<definition>`.\n");
             free_hash_table(dictionary);
             free_hash_table(removed_dict);
-            return 1;
+            goto cleanup;
         }
 
         char input[MAX_INPUT_LENGTH] = "";
@@ -136,24 +213,94 @@ int main(int argc, char *argv[]) {
             printf("Error: Invalid format. Use `wtf add <term>:<definition>`.\n");
             free_hash_table(dictionary);
             free_hash_table(removed_dict);
-            return 1;
+            goto cleanup;
         }
         
         handle_add_command(dictionary, added_path, term, definition);
+        // Check for updates after adding
+        if (is_new_day || (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
+            check_and_sync(config_dir, dictionary, false);
+        }
     } else if (strcmp(argv[1], "recover") == 0) {
         if (argc < 3) {
             printf("Error: No term provided. Use `wtf recover <term>`.\n");
             free_hash_table(dictionary);
             free_hash_table(removed_dict);
-            return 1;
+            goto cleanup;
         }
         handle_recover_command(removed_dict, removed_path, argv, argc);
-    } else {
+    } // Only check for updates if:
+    // 1. It's a new day and this is the first command
+    // 2. Explicit sync command is used
+    else if (strcmp(argv[1], "sync") == 0) {
+        // Force sync when explicit command is used
+        bool force_sync = false;
+        // Check if --force parameter is provided
+        if (argc > 2 && strcmp(argv[2], "--force") == 0) {
+            force_sync = true;
+        }
+        char current_sha[41] = {0};
+        SyncStatus status = check_and_sync(config_dir, dictionary, force_sync);
+        if (status == SYNC_NEEDED) {
+            // Update metadata for explicit sync
+            SyncMetadata metadata;
+            metadata.last_sync = time(NULL);
+            // Get and save the current SHA
+            check_for_updates(config_dir, current_sha);
+            strncpy(metadata.last_sha, current_sha, sizeof(metadata.last_sha) - 1);
+            metadata.last_sha[sizeof(metadata.last_sha) - 1] = '\0';  // Ensure null-termination
+            save_sync_metadata(config_dir, &metadata);
+        }
+    
+        switch(status) {
+            case SYNC_NOT_NEEDED:
+                printf("%sDictionary is up to date%s\n", COLOR_GREEN, COLOR_RESET);
+                break;
+            case SYNC_NO_INTERNET:
+                printf("%sconnect to the internet%s\n", COLOR_RED, COLOR_RESET);
+                break;
+            case SYNC_NEEDED:
+                break;
+            case SYNC_ERROR:
+                printf("%sError: Could not sync dictionary%s\n", COLOR_RED, COLOR_RESET);
+                break;
+        }
+        
+        if (status == SYNC_NEEDED) {
+            SyncMetadata metadata;
+            metadata.last_sync = time(NULL);
+            check_for_updates(config_dir, current_sha);
+            strncpy(metadata.last_sha, current_sha, sizeof(metadata.last_sha) - 1);
+            metadata.last_sha[sizeof(metadata.last_sha) - 1] = '\0';
+            save_sync_metadata(config_dir, &metadata);
+        }
+    }
+    // Handle automatic updates for other commands
+    else if (is_new_day || (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
+        SyncStatus status = check_and_sync(config_dir, dictionary, false);
+        if (status == SYNC_NEEDED) {
+            // Dictionary was updated
+            metadata.last_sync = current_time;
+            save_sync_metadata(config_dir, &metadata);
+        }
+    } 
+    else {
         printf("Error: Unknown command '%s'. Use `wtf -h` for help.\n", argv[1]);
     }
-
-    // Free memory
-    free_hash_table(dictionary);
-    free_hash_table(removed_dict);
-    return 0;
-}
+    
+    cleanup:
+        if (dictionary) {
+            free_hash_table(dictionary);
+            dictionary = NULL;  // Good practice to NULL after free
+        }
+        if (removed_dict) {
+            free_hash_table(removed_dict);
+            removed_dict = NULL;
+        }
+        return 0;
+    
+        // Free memory
+        free_hash_table(dictionary);
+        free_hash_table(removed_dict);
+        return 0;
+    }

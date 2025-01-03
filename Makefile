@@ -1,9 +1,10 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pedantic -std=c99 -D_POSIX_C_SOURCE=200809L -O2 -D_GNU_SOURCE
+LDFLAGS = -lcurl -ljson-c -lz
 
 # Source Files and Paths
-SRC = src/main.c src/hash_table.c src/file_utils.c src/commands.c
-OBJ = build/main.o build/hash_table.o build/file_utils.o build/commands.o
+SRC = src/main.c src/hash_table.c src/file_utils.c src/commands.c src/network_sync.c
+OBJ = build/main.o build/hash_table.o build/file_utils.o build/commands.o build/network_sync.o
 
 # Architectures and Output Binaries
 ARCH := $(shell uname -m)
@@ -30,16 +31,16 @@ all: $(OUTPUT)
 
 # Build the binary from object files
 $(OUTPUT): $(OBJ)
-	$(CC) $(OBJ) -o $(OUTPUT)
+	$(CC) $(OBJ) $(LDFLAGS) -o $(OUTPUT)
 
 # Build for specific architectures
 amd64: CFLAGS += -march=x86-64
 amd64: $(OBJ)
-	$(CC) $(OBJ) -o $(BINARY_AMD64)
+	$(CC) $(OBJ) $(LDFLAGS) -o $(BINARY_AMD64)
 
 i386: CFLAGS += -m32
 i386: $(OBJ)
-	$(CC) $(OBJ) -o $(BINARY_I386)
+	$(CC) $(OBJ) $(LDFLAGS) -o $(BINARY_I386)
 
 # Compile each source file into an object file
 build/%.o: src/%.c
@@ -49,6 +50,7 @@ build/%.o: src/%.c
 # Clean: Remove object files, the binary, and copied definitions file
 clean:
 	rm -f build/*.o build/wtf* $(OUTPUT)
+	rm -f wtf_*.deb
 
 # Determine the correct home directory
 ACTUAL_USER := $(shell who am i | awk '{print $$1}')
