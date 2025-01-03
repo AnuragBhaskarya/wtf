@@ -1,9 +1,14 @@
 # WTF - 🤔?
 
-A lightning-fast command-line dictionary tool for Linux that helps you look up and manage definitions right from your terminal. Simple, fast, and easy to use!
+#### **A lightning-fast command-line dictionary tool for Linux that helps you look up and manage definitions right from your terminal. Simple, fast, and easy to use!**
+<br>
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/AnuragBhaskarya/wtf)
 ![GitHub](https://img.shields.io/github/license/AnuragBhaskarya/wtf)
+<hr>
+
+![wtf_main](https://github.com/user-attachments/assets/173729ea-9472-4928-97e8-91c6c2dfa6e5)
+<hr>
 
 <br>
 <br>
