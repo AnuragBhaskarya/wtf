@@ -156,9 +156,14 @@ int main(int argc, char *argv[]) {
         goto cleanup;
     }
     
-    if (!load_definitions(definitions_path, dictionary)) {
-        fprintf(stderr, "Error: Could not load main definitions.\n");
-        goto cleanup;
+    bool is_force_sync = (argc > 2 && strcmp(argv[1], "sync") == 0 && strcmp(argv[2], "--force") == 0);
+    
+    // Only try to load definitions if we're not doing a force sync
+    if (!is_force_sync) {
+        if (!load_definitions(definitions_path, dictionary)) {
+            fprintf(stderr, "Error: Could not load main definitions. try running \"wtf sync --force\"\n");
+            goto cleanup;
+        }
     }
     
     // Load user-added definitions

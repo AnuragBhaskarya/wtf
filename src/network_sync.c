@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <zlib.h>
+#include <errno.h>
 
 #define COLOR_BLUE    "\033[0;34m"
 #define COLOR_UB_BLUE    "\033[1;4;34m"
@@ -336,10 +337,24 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     
     FILE *f = fopen(def_path, "w");
     if (!f) {
-        printf("%sError occurred while updating%s\n", COLOR_RED, COLOR_RESET);
-        free(response.data);
-        free(uncompressed_data);
-        return 0;
+        // If we can't open the file, try to create the directory structure
+        char res_dir[512];
+        snprintf(res_dir, sizeof(res_dir), "%s/res", config_dir);
+        if (mkdir(res_dir, 0755) != 0 && errno != EEXIST) {
+            printf("%sError: Could not create directory structure%s\n", COLOR_RED, COLOR_RESET);
+            free(response.data);
+            free(uncompressed_data);
+            return 0;
+        }
+        
+        // Try opening the file again
+        f = fopen(def_path, "w");
+        if (!f) {
+            printf("%sError: Could not create definitions file%s\n", COLOR_RED, COLOR_RESET);
+            free(response.data);
+            free(uncompressed_data);
+            return 0;
+        }
     }
     
     // Write uncompressed data to file
@@ -356,7 +371,9 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     
     // Clear and reload dictionary
     hash_table_clear(dictionary);
-    load_definitions(def_path, dictionary);
+    if (!load_definitions(def_path, dictionary)) {
+        printf("%sWarning: Downloaded definitions file but failed to load it%s\n", COLOR_YELLOW, COLOR_RESET);
+    }
     
     // Clean up
     free(response.data);
