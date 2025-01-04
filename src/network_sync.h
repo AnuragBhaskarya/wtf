@@ -23,6 +23,11 @@
 #define COLOR_RED "\033[0;31m"
 #define COLOR_YELLOW "\033[0;33m"
 #define COLOR_RESET "\033[0m"
+// Define a minimal, monochromatic color palette
+#define COLOR_PRIMARY  "\033[38;5;75m"   // Main blue for structure
+#define COLOR_DIM     "\033[38;5;67m"    // Dimmed version for secondary text
+#define COLOR_SUCCESS "\033[38;5;78m"    // Subtle green only for checkmarks
+#define COLOR_RESET   "\033[0m"
 
 typedef struct {
     char *data;
@@ -31,6 +36,7 @@ typedef struct {
     double speed;
     CURL *curl;
     bool show_progress;
+    bool force_sync; 
 } NetworkResponse;
 
 typedef struct {
@@ -51,9 +57,9 @@ int is_network_available(void);
 void load_sync_metadata(const char *config_dir, SyncMetadata *metadata);
 void save_sync_metadata(const char *config_dir, const SyncMetadata *metadata);
 SyncStatus check_for_updates(const char *config_dir, char *current_sha);
-int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *new_sha);
+int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *new_sha, bool force_sync);
 SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary, bool force_sync);
-void display_progress(size_t current, size_t total, double speed);
+void display_progress(size_t current, size_t total, double speed, bool force_sync);
 size_t header_callback(char *buffer, size_t size, size_t nitems, void *userdata);
 
 #endif

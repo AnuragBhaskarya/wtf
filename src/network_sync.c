@@ -43,13 +43,13 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
     }
     
     if (resp->show_progress) {
-        display_progress(resp->size, resp->total_size, resp->speed);
+        display_progress(resp->size, resp->total_size, resp->speed, resp->force_sync);
     }
     
     return realsize;
 }
 
-void display_progress(size_t current, size_t total, double speed) {
+void display_progress(size_t current, size_t total, double speed, bool force_sync) {
     if (total == 0) return;
     
     const int bar_width = 40;
@@ -59,19 +59,17 @@ void display_progress(size_t current, size_t total, double speed) {
     // Clear line and move cursor to start
     printf("\r\033[K");
     
-    // Display progress bar
-    printf("%s[%s", COLOR_CYAN, COLOR_BLUE);
+    // Display progress bar - using a more minimal design with single color
+    printf("%s[", COLOR_PRIMARY);
     for (int i = 0; i < bar_width; i++) {
         if (i < filled) {
-            printf("█");  // Full block for filled portion
-        } else if (i == filled) {
-            printf("%s▓%s", COLOR_YELLOW, COLOR_BLUE); // Half block for transition
+            printf("█");  // Solid blocks for filled portion
         } else {
-            printf("░");  // Light block for empty portion
+            printf("░");  // Light blocks for empty portion
         }
     }
     
-    // Calculate sizes for display
+    // Calculate sizes for display with more consistent formatting
     char size_str[32], speed_str[32];
     if (total < 1024*1024) {
         snprintf(size_str, sizeof(size_str), "%.1f/%.1f KB", 
@@ -82,26 +80,35 @@ void display_progress(size_t current, size_t total, double speed) {
     }
     
     if (speed < 1024) {
-        snprintf(speed_str, sizeof(speed_str), "%.0f B/s", speed);
+        snprintf(speed_str, sizeof(speed_str), "%.1f B/s", speed);
     } else if (speed < 1024*1024) {
         snprintf(speed_str, sizeof(speed_str), "%.1f KB/s", speed/1024);
     } else {
         snprintf(speed_str, sizeof(speed_str), "%.1f MB/s", speed/(1024*1024));
     }
     
-    // Display statistics
-    printf("%s] %s%3.0f%% %s%s %s%s%s", 
-           COLOR_CYAN,                    // Close bracket color
-           COLOR_YELLOW, progress * 100,  // Percentage
-           COLOR_CYAN, size_str,         // Size information
-           COLOR_BLUE, speed_str,        // Speed information
-           COLOR_RESET);                 // Reset colors
+    // Display statistics with minimal color usage
+    printf("] %s%.0f%%%s %s %s%s%s", 
+           COLOR_YELLOW,     // Yellow color for percentage
+           progress * 100,   // Percentage (float)
+           COLOR_PRIMARY,    // Back to primary for spacing
+           size_str,        // Size information (char *)
+           COLOR_YELLOW,    // Yellow color for speed
+           speed_str,       // Speed information (char *)
+           COLOR_RESET);    // Reset color code
     
     fflush(stdout);
     
-    // Print newline when complete
+    // Print newline when complete, but only for regular sync
     if (current == total) {
-        printf("\n\n%sDownload complete.%s\n", COLOR_CYAN, COLOR_RESET);
+        printf("\n%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+        if (force_sync) {
+        printf("%s├─ %s✓%s download complete%s\n", COLOR_PRIMARY, COLOR_SUCCESS, COLOR_DIM, COLOR_RESET);
+        printf("%s├─ %s✓%s decompression complete%s\n", COLOR_PRIMARY, COLOR_SUCCESS, COLOR_DIM, COLOR_RESET);    
+        }
+        if (!force_sync) {  // Only show "Download complete" for regular sync
+            printf("%s├─ %s✓%s download complete%s\n", COLOR_PRIMARY, COLOR_SUCCESS, COLOR_DIM, COLOR_RESET);
+        }
     }
 }
 
@@ -218,9 +225,17 @@ size_t header_callback(char *buffer, size_t size, size_t nitems, void *userdata)
     return bytes;
 }
 
-int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *new_sha) {
-    printf("%sAn update of the dictionary available!%s\n", COLOR_GREEN,COLOR_RESET);
-    printf("%sDownloading the update...%s\n\n", COLOR_YELLOW, COLOR_RESET);
+int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *new_sha, bool force_sync) {
+    if (force_sync) {
+        printf("\n%s╭─ %sForce update initiated!%s\n", COLOR_PRIMARY, COLOR_RED, COLOR_RESET);
+        printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+    } else {
+        printf("\n%s╭─ Dictionary Update%s\n", COLOR_PRIMARY, COLOR_RESET);
+        printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+        printf("%s├─ %s✓%s New version available%s\n", COLOR_PRIMARY, COLOR_SUCCESS, COLOR_DIM, COLOR_RESET);
+        printf("%s├─ %s✓%s Starting download...%s\n", COLOR_PRIMARY, COLOR_SUCCESS, COLOR_DIM, COLOR_RESET);
+        printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+    }
     
     CURL *curl = curl_easy_init();
     if (!curl) return 0;
@@ -235,6 +250,7 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     response.total_size = 0;
     response.curl = curl;
     response.show_progress = true;
+    response.force_sync = force_sync;
     
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Accept-Encoding: gzip");
@@ -367,7 +383,7 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     strncpy(metadata.last_sha, new_sha, sizeof(metadata.last_sha) - 1);
     save_sync_metadata(config_dir, &metadata);
     
-    printf("%sUpdate Successful!%s\n", COLOR_CYAN_BOLD, COLOR_RESET);
+    printf("%s╰─ %s✓%s update successful%s\n\n", COLOR_PRIMARY, COLOR_SUCCESS, COLOR_PRIMARY, COLOR_RESET);
     
     // Clear and reload dictionary
     hash_table_clear(dictionary);
@@ -397,7 +413,7 @@ SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary, bool fo
             return SYNC_ERROR;
         }
         // Force sync regardless of SHA
-        if (sync_dictionary(config_dir, dictionary, current_sha)) {
+        if (sync_dictionary(config_dir, dictionary, current_sha, true)) {
             return SYNC_NEEDED;
         } else {
             return SYNC_ERROR;
@@ -420,7 +436,7 @@ SyncStatus check_and_sync(const char *config_dir, HashTable *dictionary, bool fo
     // Compare SHA with last known SHA
     if (strcmp(current_sha, metadata.last_sha) != 0) {
         // SHA different - update needed
-        if (sync_dictionary(config_dir, dictionary, current_sha)) {
+        if (sync_dictionary(config_dir, dictionary, current_sha, false)) {
             return SYNC_NEEDED;  // Successfully updated
         } else {
             return SYNC_ERROR;   // Update failed

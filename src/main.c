@@ -249,10 +249,13 @@ int main(int argc, char *argv[]) {
     
         switch(status) {
             case SYNC_NOT_NEEDED:
-                printf("%sDictionary is up to date%s\n", COLOR_GREEN, COLOR_RESET);
+                printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+                printf("%s├─ %s✓%s Checking...%s\n", COLOR_PRIMARY, COLOR_SUCCESS, COLOR_PRIMARY, COLOR_RESET);
+                printf("%s╰─ %s✓%s Dictionary is up-to-date!%s\n\n", COLOR_PRIMARY, COLOR_SUCCESS, COLOR_PRIMARY, COLOR_RESET);
                 break;
             case SYNC_NO_INTERNET:
-                printf("%sconnect to the internet%s\n", COLOR_RED, COLOR_RESET);
+                printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+                printf("%s╰─ %s! Check Your Internet Connection!%s\n\n", COLOR_PRIMARY, COLOR_RED, COLOR_RESET);
                 break;
             case SYNC_NEEDED:
                 break;
