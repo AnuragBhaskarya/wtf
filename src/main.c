@@ -5,6 +5,7 @@
 #include "hash_table.h"
 #include "file_utils.h"
 #include "network_sync.h"
+#include "version.h"
 #include "commands.h"
 #include <limits.h>
 #include <unistd.h>
@@ -12,15 +13,44 @@
 
 #define MAX_INPUT_LENGTH 256
 
+void print_version() {
+    printf("\n%s", COLOR_PRIMARY);
+    printf("██╗    ██╗████████╗███████╗\n");
+    printf("██║    ██║╚══██╔══╝██╔════╝\n");
+    printf("██║ █╗ ██║   ██║   █████╗  \n");
+    printf("██║███╗██║   ██║   ██╔══╝  \n");
+    printf("╚███╔███╔╝   ██║   ██║     \n");
+    printf(" ╚══╝╚══╝    ╚═╝   ╚═╝     \n");
+    printf("%s\n", COLOR_RESET);
+
+    printf("%s╭─%s WTF - Command Line Dictionary\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s├─%s Version    : %s%s%s\n", COLOR_PRIMARY, COLOR_PRIMARY, COLOR_DIM, WTF_VERSION, COLOR_RESET);
+    printf("%s├─%s Author     : %s%s%s\n", COLOR_PRIMARY, COLOR_PRIMARY, COLOR_DIM, WTF_AUTHOR, COLOR_RESET);
+    printf("%s├─%s Repository : %s%s%s\n", COLOR_PRIMARY, COLOR_PRIMARY, COLOR_DIM, WTF_REPO, COLOR_RESET);
+    printf("%s├─%s Language   : %sC%s\n", COLOR_PRIMARY, COLOR_PRIMARY, COLOR_DIM, COLOR_RESET);
+    printf("%s├─%s License    : %sMIT%s\n", COLOR_PRIMARY, COLOR_PRIMARY, COLOR_DIM, COLOR_RESET);
+    printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s╰─%s Built by [%sAnurag Bhaskarya%s]\n\n", COLOR_PRIMARY, COLOR_RESET, COLOR_CYAN, COLOR_RESET);
+}
+
 void print_help() {
-    printf("Usage:\n");
-    printf("  wtf is <term>    - Get the definition of a term\n");
-    printf("  wtf add <term>:<definition> - Add a new term and definition to the dictionary\n");
-    printf("  wtf remove <term> - Remove definition(s) for a term\n");
-    printf("  wtf recover <term> - Recover previously removed definition(s) for a term\n");
-    printf("  wtf sync         - Sync dictionary with latest updates\n");
-    printf("  wtf sync --force - Force sync dictionary with latest updates \n");
-    printf("  wtf -h | --help  - Show this help menu\n");
+    printf("\n%s╭─ Usage:%s\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s├─%s wtf is <term>\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s│  └─ Get the definition of a term%s\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s├─%s wtf add <term>:<definition>\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s│  └─ Add a new term and definition to the dictionary%s\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s├─%s wtf remove <term>\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s│  └─ Remove definition(s) for a term%s\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s├─%s wtf recover <term>\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s│  └─ Recover previously removed definition(s) for a term%s\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s├─%s wtf sync\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s│  └─ Sync dictionary with latest updates%s\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s├─%s wtf sync --force\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s│  └─ Force sync dictionary with latest updates%s\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s╰─%s wtf -h | --help\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s   └─ Show this help menu%s\n\n", COLOR_PRIMARY, COLOR_RESET);
 }
 
 // For the single character response:
@@ -134,6 +164,14 @@ int main(int argc, char *argv[]) {
     }
 
     if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
+        if (argc > 2) {
+            printf("\n%s╭─ Error%s: Invalid parameter %s'%s'%s\n", COLOR_RED, COLOR_RESET, COLOR_YELLOW, argv[2], COLOR_RESET);
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s├─%s Did you mean: %swtf -h%s or %swtf --help%s\n",COLOR_RED, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s╰─%s Get help using this command.\n\n",COLOR_RED, COLOR_RESET);
+            goto cleanup;
+        }
         print_help();
         goto cleanup;
     }
@@ -175,9 +213,7 @@ int main(int argc, char *argv[]) {
     // Handle commands
     if (strcmp(argv[1], "is") == 0) {
         if (argc < 3) {
-            printf("Error: No term provided. Use `wtf is <term>`.\n");
-            free_hash_table(dictionary);
-            free_hash_table(removed_dict);
+            printf("\n%s╰─ Error%s: No term provided. Use `wtf is <term>`\n\n", COLOR_RED, COLOR_RESET);
             goto cleanup;
         }
         handle_is_command(dictionary, removed_dict, argv, argc);
@@ -190,9 +226,7 @@ int main(int argc, char *argv[]) {
             
     } else if (strcmp(argv[1], "remove") == 0) {
         if (argc < 3) {
-            printf("Error: No term provided. Use `wtf remove <term>`.\n");
-            free_hash_table(dictionary);
-            free_hash_table(removed_dict);
+            printf("\n%s╰─ Error%s: No term provided. Use `wtf remove <term>`\n\n", COLOR_RED, COLOR_RESET);
             goto cleanup;
         }
         handle_remove_command(dictionary, removed_dict, removed_path, argv, argc);
@@ -200,8 +234,6 @@ int main(int argc, char *argv[]) {
     else if (strcmp(argv[1], "add") == 0) {
         if (argc < 3) {
             printf("Error: No term provided. Use `wtf add <term>:<definition>`.\n");
-            free_hash_table(dictionary);
-            free_hash_table(removed_dict);
             goto cleanup;
         }
 
@@ -216,8 +248,6 @@ int main(int argc, char *argv[]) {
 
         if (!term || !definition) {
             printf("Error: Invalid format. Use `wtf add <term>:<definition>`.\n");
-            free_hash_table(dictionary);
-            free_hash_table(removed_dict);
             goto cleanup;
         }
         
@@ -228,9 +258,7 @@ int main(int argc, char *argv[]) {
         }
     } else if (strcmp(argv[1], "recover") == 0) {
         if (argc < 3) {
-            printf("Error: No term provided. Use `wtf recover <term>`.\n");
-            free_hash_table(dictionary);
-            free_hash_table(removed_dict);
+            printf("\n%s╰─ Error%s: No term provided. Use `wtf recover <term>`\n\n", COLOR_RED, COLOR_RESET);
             goto cleanup;
         }
         handle_recover_command(removed_dict, removed_path, argv, argc);
@@ -240,9 +268,19 @@ int main(int argc, char *argv[]) {
     else if (strcmp(argv[1], "sync") == 0) {
         // Force sync when explicit command is used
         bool force_sync = false;
-        // Check if --force parameter is provided
-        if (argc > 2 && strcmp(argv[2], "--force") == 0) {
-            force_sync = true;
+        // Check if there are additional parameters
+        if (argc > 2) {
+            if (strcmp(argv[2], "--force") == 0) {
+                force_sync = true;
+            } else {
+                // Invalid parameter
+                printf("\n%s╭─ Error%s: Invalid parameter %s'%s'%s\n", COLOR_RED, COLOR_RESET, COLOR_YELLOW, argv[2], COLOR_RESET);
+                printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+                printf("%s├─%s Did you mean: %swtf sync --force%s\n",COLOR_RED, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
+                printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+                printf("%s╰─%s It force syncs dictionary with remote repository \n\n",COLOR_RED, COLOR_RESET);
+                goto cleanup;
+            }
         }
         char current_sha[41] = {0};
         SyncStatus status = check_and_sync(config_dir, dictionary, force_sync);
@@ -272,17 +310,18 @@ int main(int argc, char *argv[]) {
             metadata.last_sha[sizeof(metadata.last_sha) - 1] = '\0';
             save_sync_metadata(config_dir, &metadata);
         }
-    }
-    // Handle automatic updates for other commands
-    else if (is_new_day || (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
-        SyncStatus status = check_and_sync(config_dir, dictionary, false);
-        if (status == SYNC_NEEDED) {
-            // Dictionary was updated
-            metadata.last_sync = current_time;
-            save_sync_metadata(config_dir, &metadata);
+    } else if (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
+        if (argc > 2) {
+            printf("\n%s╭─ Error%s: Invalid parameter %s'%s'%s\n", COLOR_RED, COLOR_RESET, COLOR_YELLOW, argv[2], COLOR_RESET);
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s├─%s Did you mean: %swtf -v%s or %swtf --version%s\n",COLOR_RED, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s╰─%s Get the current version info\n\n",COLOR_RED, COLOR_RESET);
+            goto cleanup;
         }
-    } 
-    else {
+        print_version();
+        goto cleanup;
+    } else {
         printf("Error: Unknown command '%s'. Use `wtf -h` for help.\n", argv[1]);
     }
     

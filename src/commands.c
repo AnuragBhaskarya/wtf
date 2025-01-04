@@ -29,10 +29,6 @@ void print_wrapped_definition(const char* text, int indent_size, int term_width)
 
 // Handle "wtf is <term>" command
 void handle_is_command(HashTable *dictionary, HashTable *removed_dict, char **args, int argc) {
-    if (argc < 3) {
-        printf("Error: No term provided. Use `wtf is <term>`.\n");
-        return;
-    }
     
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
@@ -130,11 +126,6 @@ void handle_remove_command(HashTable *dictionary, HashTable *removed_dict, const
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
     int term_width = w.ws_col;
-
-    if (argc < 3) {
-        printf("\n%s╰─ Error%s: No term provided. Use `wtf remove <term>`\n\n", COLOR_RED, COLOR_RESET);
-        return;
-    }
 
     char term[MAX_INPUT_LENGTH] = "";
     for (int i = 2; i < argc; i++) {
@@ -274,11 +265,6 @@ void handle_recover_command(HashTable *removed_dict, const char *removed_path, c
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
     int term_width = w.ws_col;
-
-    if (argc < 3) {
-        printf("\n%s╰─ Error%s: No term provided. Use `wtf recover <term>`\n\n", COLOR_RED, COLOR_RESET);
-        return;
-    }
 
     char term[MAX_INPUT_LENGTH] = "";
     for (int i = 2; i < argc; i++) {

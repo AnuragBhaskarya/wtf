@@ -85,6 +85,10 @@ uninstall:
 	@rm -rf $(ACTUAL_HOME)/.wtf
 	@echo "wtf and its definitions file uninstalled successfully."
 	
+reinstall: uninstall clean
+	@echo "Reinstalling wtf..."
+	@$(MAKE) install
+	
 # Help: Show available Makefile targets
 help:
 	@echo "Available targets:"
@@ -94,3 +98,4 @@ help:
 	@echo "  clean     - Remove all object files and binaries"
 	@echo "  install   - Install 'wtf' for the current architecture"
 	@echo "  uninstall - Uninstall 'wtf'"
+	@echo "  reinstall - Uninstall, clean, and install wtf again"

@@ -8,7 +8,6 @@
 
 #define COLOR_BLUE    "\033[0;34m"
 #define COLOR_UB_BLUE    "\033[1;4;34m"
-#define COLOR_CYAN    "\033[0;36m"
 #define COLOR_YELLOW  "\033[0;33m"
 #define COLOR_CYAN_BOLD    "\033[1;36m"
 
