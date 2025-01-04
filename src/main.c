@@ -269,7 +269,14 @@ int main(int argc, char *argv[]) {
         // Force sync when explicit command is used
         bool force_sync = false;
         // Check if there are additional parameters
-        if (argc > 2) {
+        if (argc > 3) {
+            printf("\n%s╭─ Error%s: Invalid parameter %s'%s'%s\n", COLOR_RED, COLOR_RESET, COLOR_YELLOW, argv[3], COLOR_RESET);
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s├─%s Did you mean: %swtf sync --force%s\n",COLOR_RED, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s╰─%s It force syncs dictionary with remote repository\n\n",COLOR_RED, COLOR_RESET);
+            goto cleanup;
+        } else if (argc > 2) {
             if (strcmp(argv[2], "--force") == 0) {
                 force_sync = true;
             } else {
@@ -280,7 +287,7 @@ int main(int argc, char *argv[]) {
                 printf("%s│%s\n",COLOR_RED, COLOR_RESET);
                 printf("%s╰─%s It force syncs dictionary with remote repository \n\n",COLOR_RED, COLOR_RESET);
                 goto cleanup;
-            }
+            } 
         }
         char current_sha[41] = {0};
         SyncStatus status = check_and_sync(config_dir, dictionary, force_sync);
