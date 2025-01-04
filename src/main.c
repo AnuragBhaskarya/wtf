@@ -241,16 +241,6 @@ int main(int argc, char *argv[]) {
         }
         char current_sha[41] = {0};
         SyncStatus status = check_and_sync(config_dir, dictionary, force_sync);
-        if (status == SYNC_NEEDED) {
-            // Update metadata for explicit sync
-            SyncMetadata metadata;
-            metadata.last_sync = time(NULL);
-            // Get and save the current SHA
-            check_for_updates(config_dir, current_sha);
-            strncpy(metadata.last_sha, current_sha, sizeof(metadata.last_sha) - 1);
-            metadata.last_sha[sizeof(metadata.last_sha) - 1] = '\0';  // Ensure null-termination
-            save_sync_metadata(config_dir, &metadata);
-        }
     
         switch(status) {
             case SYNC_NOT_NEEDED:
@@ -291,16 +281,11 @@ int main(int argc, char *argv[]) {
     cleanup:
         if (dictionary) {
             free_hash_table(dictionary);
-            dictionary = NULL;  // Good practice to NULL after free
+            dictionary = NULL;
         }
         if (removed_dict) {
             free_hash_table(removed_dict);
             removed_dict = NULL;
         }
-        return 0;
-    
-        // Free memory
-        free_hash_table(dictionary);
-        free_hash_table(removed_dict);
         return 0;
     }
