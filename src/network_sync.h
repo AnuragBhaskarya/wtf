@@ -24,9 +24,9 @@
 #define COLOR_YELLOW "\033[0;33m"
 #define COLOR_RESET "\033[0m"
 // Define a minimal, monochromatic color palette
-#define COLOR_PRIMARY  "\033[38;5;75m"   // Main blue for structure
-#define COLOR_DIM     "\033[38;5;67m"    // Dimmed version for secondary text
-#define COLOR_SUCCESS "\033[38;5;78m"    // Subtle green only for checkmarks
+#define COLOR_PRIMARY  "\033[0;38;5;75m"   // Main blue for structure
+#define COLOR_DIM     "\033[0;38;5;67m"    // Dimmed version for secondary text
+#define COLOR_SUCCESS "\033[0;38;5;78m"    // Subtle green only for checkmarks
 #define COLOR_RESET   "\033[0m"
 
 typedef struct {

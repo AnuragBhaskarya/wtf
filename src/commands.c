@@ -4,8 +4,28 @@
 #include "commands.h"
 #include "hash_table.h"
 #include "file_utils.h"
+#include "network_sync.h"
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #define MAX_INPUT_LENGTH 256
+
+// Helper function to wrap text with proper indentation
+void print_wrapped_definition(const char* text, int indent_size, int term_width) {
+    int line_pos = indent_size;
+    int text_len = strlen(text);
+    
+    // Print first part (after the term:)
+    for (int i = 0; i < text_len; i++) {
+        if (line_pos >= term_width - 1) {  // -1 for safety margin
+            printf("\n%s│%s%*s", COLOR_PRIMARY, COLOR_RESET, indent_size - 2, "");
+            line_pos = indent_size;
+        }
+        putchar(text[i]);
+        line_pos++;
+    }
+}
+
 
 // Handle "wtf is <term>" command
 void handle_is_command(HashTable *dictionary, HashTable *removed_dict, char **args, int argc) {
@@ -13,30 +33,70 @@ void handle_is_command(HashTable *dictionary, HashTable *removed_dict, char **ar
         printf("Error: No term provided. Use `wtf is <term>`.\n");
         return;
     }
-
+    
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    int term_width = w.ws_col;
     char term[256] = "";
     for (int i = 2; i < argc; i++) {
         strcat(term, args[i]);
         if (i < argc - 1) strcat(term, " ");
     }
+    
 
     DefinitionList *definitions = hash_table_lookup_all(dictionary, term);
     if (definitions) {
-        int match_found = 0;
+        int def_count = 0;
         
+        // Count valid definitions
         for (int i = 0; i < definitions->count; i++) {
-            // Skip if definition is in removed list
             if (!is_definition_removed(definitions->keys[i], definitions->definitions[i], removed_dict)) {
-                printf("%s: %s\n", definitions->keys[i], definitions->definitions[i]);
-                match_found = 1;
+                def_count++;
             }
         }
         
-        free_definition_list(definitions);
-        
-        if (!match_found) {
+        if (def_count > 0) {
+            printf("\n%s╭─ Found %d definition%s for '%s%s%s'%s\n", 
+                COLOR_PRIMARY, def_count, 
+                (def_count > 1 ? "s" : ""),
+                COLOR_YELLOW, term, COLOR_PRIMARY,
+                COLOR_RESET);
+            printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+            
+            for (int i = 0; i < definitions->count; i++) {
+                if (!is_definition_removed(definitions->keys[i], definitions->definitions[i], removed_dict)) {
+                    
+                    // Calculate indent size (tree symbol + term + ": ")
+                    int indent_size = 4 + strlen(definitions->keys[i]) + 2;
+                    
+                    if (i == definitions->count - 1) {
+                        printf("%s╰─ %s%s%s: ", 
+                            COLOR_PRIMARY,
+                            COLOR_YELLOW,
+                            definitions->keys[i],
+                            COLOR_RESET);
+                    } else {
+                        printf("%s├─ %s%s%s: ", 
+                            COLOR_PRIMARY,
+                            COLOR_YELLOW,
+                            definitions->keys[i],
+                            COLOR_RESET);
+                    }
+                    
+                    print_wrapped_definition(definitions->definitions[i], indent_size, term_width);
+                    
+                    if (i < definitions->count - 1) {
+                        printf("\n%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+                    }
+                }
+            }
+            printf("\n");
+            printf("\n");
+        } else {
             printf("Lol I don't know what '%s' means.\n", term);
         }
+        
+        free_definition_list(definitions);
     } else {
         printf("Lol I don't know what '%s' means.\n", term);
     }
@@ -67,8 +127,12 @@ void handle_add_command(HashTable *dictionary, const char *added_path, const cha
 
 // Handle "wtf remove <term>" command
 void handle_remove_command(HashTable *dictionary, HashTable *removed_dict, const char *removed_path, char **args, int argc) {
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    int term_width = w.ws_col;
+
     if (argc < 3) {
-        printf("Error: No term provided. Use `wtf remove <term>`.\n");
+        printf("\n%s╰─ Error%s: No term provided. Use `wtf remove <term>`\n\n", COLOR_RED, COLOR_RESET);
         return;
     }
 
@@ -80,7 +144,8 @@ void handle_remove_command(HashTable *dictionary, HashTable *removed_dict, const
 
     DefinitionList *definitions = hash_table_lookup_all(dictionary, term);
     if (!definitions) {
-        printf("Term '%s' not found in the dictionary.\n", term);
+        printf("\n%s╰─ Term '%s%s%s' not found in the dictionary%s\n\n", 
+            COLOR_RED, COLOR_YELLOW, term, COLOR_RED, COLOR_RESET);
         return;
     }
 
@@ -93,15 +158,29 @@ void handle_remove_command(HashTable *dictionary, HashTable *removed_dict, const
     }
 
     if (filtered->count == 0) {
-        printf("No definitions available to remove.\n");
+        printf("\n%s╰─ No definitions available to remove%s\n\n", COLOR_RED, COLOR_RESET);
         free_definition_list(definitions);
         free_definition_list(filtered);
         return;
     }
 
     if (filtered->count == 1) {
-        printf("Found definition:\n%s: %s\n", filtered->keys[0], filtered->definitions[0]);
-        printf("Are you sure you want to remove this definition? [Y/n]: ");
+        // Single definition case
+        printf("\n%s╭─ Found definition for '%s%s%s'%s\n",
+            COLOR_PRIMARY, COLOR_YELLOW, term, COLOR_PRIMARY, COLOR_RESET);
+        printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+        
+        int indent_size = 4 + strlen(filtered->keys[0]) + 2;
+        printf("%s╰─ %s%s%s: ", 
+            COLOR_PRIMARY,
+            COLOR_YELLOW,
+            filtered->keys[0],
+            COLOR_RESET);
+        
+        print_wrapped_definition(filtered->definitions[0], indent_size, term_width);
+        printf("\n\n");
+        
+        printf("\nAre you sure you want to remove this definition? [Y/n]: ");
         
         char response = getchar();
         while (getchar() != '\n');
@@ -109,18 +188,48 @@ void handle_remove_command(HashTable *dictionary, HashTable *removed_dict, const
         if (response == 'Y' || response == 'y') {
             if (add_to_removed(removed_path, filtered->keys[0], filtered->definitions[0])) {
                 hash_table_insert(removed_dict, filtered->keys[0], filtered->definitions[0]);
-                printf("Definition removed successfully.\n");
+                printf("\n%s╰─ Definition removed successfully%s\n\n", COLOR_SUCCESS, COLOR_RESET);
             }
         } else {
-            printf("Operation aborted.\n");
+            printf("\n%s╰─ Operation aborted%s\n\n", COLOR_RED, COLOR_RESET);
         }
     } else {
-        printf("Found definitions:\n");
+        // Multiple definitions case
+        printf("\n%s╭─ Found %d definitions for '%s%s%s'%s\n",
+            COLOR_PRIMARY, filtered->count,
+            COLOR_YELLOW, term, COLOR_PRIMARY, COLOR_RESET);
+        printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+        
         for (int i = 0; i < filtered->count; i++) {
-            printf("%d. %s: %s\n", i + 1, filtered->keys[i], filtered->definitions[i]);
+            // Calculate indent size (number + ". " + term + ": ")
+            int number_width = snprintf(NULL, 0, "%d", i + 1);
+            int indent_size = 4 + number_width + 2 + strlen(filtered->keys[i]) + 2;
+            
+            if (i == filtered->count - 1) {
+                printf("%s╰─ %s%d. %s%s: ",
+                    COLOR_PRIMARY,
+                    COLOR_YELLOW,
+                    i + 1,
+                    filtered->keys[i],
+                    COLOR_RESET);
+            } else {
+                printf("%s├─ %s%d. %s%s: ",
+                    COLOR_PRIMARY,
+                    COLOR_YELLOW,
+                    i + 1,
+                    filtered->keys[i],
+                    COLOR_RESET);
+            }
+            
+            print_wrapped_definition(filtered->definitions[i], indent_size, term_width);
+            
+            if (i < filtered->count - 1) {
+                printf("\n%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+            }
         }
         
-        printf("Enter the numbers of definitions to remove (separated by space or comma): ");
+        printf("\n\nEnter the numbers of definitions to remove %s(separated by space or comma)%s: ", COLOR_YELLOW, COLOR_RESET);
+            
         char input[MAX_INPUT_LENGTH];
         if (fgets(input, sizeof(input), stdin)) {
             printf("Are you sure you want to remove these definitions? [Y/n]: ");
@@ -145,12 +254,14 @@ void handle_remove_command(HashTable *dictionary, HashTable *removed_dict, const
                 }
                 
                 if (removed > 0) {
-                    printf("%d definition(s) removed successfully.\n", removed);
+                    printf("\n%s╰─ %s(%d)%s definition(s) removed successfully%s\n\n", 
+                        COLOR_SUCCESS, COLOR_YELLOW, removed, COLOR_SUCCESS, COLOR_RESET);
                 } else {
-                    printf("No definitions were removed.\n");
+                    printf("\n%s╰─ No definitions were removed%s\n\n", 
+                        COLOR_RED, COLOR_RESET);
                 }
             } else {
-                printf("Operation aborted.\n");
+                printf("\n%s╰─ Operation aborted%s\n\n", COLOR_RED, COLOR_RESET);
             }
         }
     }
@@ -160,8 +271,12 @@ void handle_remove_command(HashTable *dictionary, HashTable *removed_dict, const
 }
 
 void handle_recover_command(HashTable *removed_dict, const char *removed_path, char **args, int argc) {
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    int term_width = w.ws_col;
+
     if (argc < 3) {
-        printf("Error: No term provided. Use `wtf recover <term>`.\n");
+        printf("\n%s╰─ Error%s: No term provided. Use `wtf recover <term>`\n\n", COLOR_RED, COLOR_RESET);
         return;
     }
 
@@ -173,41 +288,86 @@ void handle_recover_command(HashTable *removed_dict, const char *removed_path, c
 
     DefinitionList *removed_defs = hash_table_lookup_all(removed_dict, term);
     if (!removed_defs) {
-        printf("No removed definitions found for '%s'.\n", term);
+        printf("\n%s╰─ Term '%s%s%s' not found in removed definitions%s\n\n", 
+            COLOR_RED, COLOR_YELLOW, term, COLOR_RED, COLOR_RESET);
         return;
     }
 
     if (removed_defs->count == 1) {
-        printf("Found removed definition:\n%s: %s\n", removed_defs->keys[0], removed_defs->definitions[0]);
-        printf("Are you sure you want to recover this definition? [y/N]: ");
+        // Single definition case
+        printf("\n%s╭─ Found removed definition for '%s%s%s'%s\n",
+            COLOR_PRIMARY, COLOR_YELLOW, term, COLOR_PRIMARY, COLOR_RESET);
+        printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+        
+        int indent_size = 4 + strlen(removed_defs->keys[0]) + 2;
+        printf("%s╰─ %s%s%s: ", 
+            COLOR_PRIMARY,
+            COLOR_YELLOW,
+            removed_defs->keys[0],
+            COLOR_RESET);
+        
+        print_wrapped_definition(removed_defs->definitions[0], indent_size, term_width);
+        printf("\n\n");
+        
+        printf("\nAre you sure you want to recover this definition? [Y/n]: ");
         
         char response = getchar();
-        while (getchar() != '\n'); // Clear input buffer
+        while (getchar() != '\n');
         
-        if (response == 'y' || response == 'Y') {
+        if (response == 'Y' || response == 'y') {
             if (remove_from_removed(removed_path, removed_defs->keys[0], removed_defs->definitions[0])) {
                 hash_table_delete_single(removed_dict, removed_defs->keys[0], removed_defs->definitions[0]);
-                printf("Definition recovered successfully.\n");
+                printf("\n%s╰─ Definition recovered successfully%s\n\n", COLOR_SUCCESS, COLOR_RESET);
             } else {
-                printf("Error: Could not recover definition.\n");
+                printf("\n%s╰─ Error: Could not recover definition%s\n\n", COLOR_RED, COLOR_RESET);
             }
         } else {
-            printf("Operation aborted.\n");
+            printf("\n%s╰─ Operation aborted%s\n\n", COLOR_RED, COLOR_RESET);
         }
     } else {
-        printf("Found removed definitions:\n");
+        // Multiple definitions case
+        printf("\n%s╭─ Found %d removed definitions for '%s%s%s'%s\n",
+            COLOR_PRIMARY, removed_defs->count,
+            COLOR_YELLOW, term, COLOR_PRIMARY, COLOR_RESET);
+        printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+        
         for (int i = 0; i < removed_defs->count; i++) {
-            printf("%d. %s: %s\n", i + 1, removed_defs->keys[i], removed_defs->definitions[i]);
+            int number_width = snprintf(NULL, 0, "%d", i + 1);
+            int indent_size = 4 + number_width + 2 + strlen(removed_defs->keys[i]) + 2;
+            
+            if (i == removed_defs->count - 1) {
+                printf("%s╰─ %s%d. %s%s: ",
+                    COLOR_PRIMARY,
+                    COLOR_YELLOW,
+                    i + 1,
+                    removed_defs->keys[i],
+                    COLOR_RESET);
+            } else {
+                printf("%s├─ %s%d. %s%s: ",
+                    COLOR_PRIMARY,
+                    COLOR_YELLOW,
+                    i + 1,
+                    removed_defs->keys[i],
+                    COLOR_RESET);
+            }
+            
+            print_wrapped_definition(removed_defs->definitions[i], indent_size, term_width);
+            
+            if (i < removed_defs->count - 1) {
+                printf("\n%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+            }
         }
         
-        printf("Enter the numbers of definitions to recover (separated by spaces or commas): ");
+        printf("\n\nEnter the numbers of definitions to recover %s(separated by space or comma)%s: ", 
+            COLOR_YELLOW, COLOR_RESET);
+            
         char input[MAX_INPUT_LENGTH];
         if (fgets(input, sizeof(input), stdin)) {
-            printf("Are you sure you want to recover these definitions? [y/N]: ");
+            printf("Are you sure you want to recover these definitions? [Y/n]: ");
             char response = getchar();
             while (getchar() != '\n');
             
-            if (response == 'y' || response == 'Y') {
+            if (response == 'Y' || response == 'y') {
                 char *token = strtok(input, " ,\n");
                 int recovered = 0;
                 
@@ -225,12 +385,13 @@ void handle_recover_command(HashTable *removed_dict, const char *removed_path, c
                 }
                 
                 if (recovered > 0) {
-                    printf("%d definition(s) recovered successfully.\n", recovered);
+                    printf("\n%s╰─ %s(%d)%s definition(s) recovered successfully%s\n\n", 
+                        COLOR_SUCCESS, COLOR_YELLOW, recovered, COLOR_SUCCESS, COLOR_RESET);
                 } else {
-                    printf("No definitions were recovered.\n");
+                    printf("\n%s╰─ No definitions were recovered%s\n\n", COLOR_RED, COLOR_RESET);
                 }
             } else {
-                printf("Operation aborted.\n");
+                printf("\n%s╰─ Operation aborted%s\n\n", COLOR_RED, COLOR_RESET);
             }
         }
     }
