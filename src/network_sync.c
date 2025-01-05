@@ -5,10 +5,11 @@
 #include <time.h>
 #include <zlib.h>
 #include <errno.h>
+#include <pwd.h>
+#include <unistd.h>
 
 #define COLOR_BLUE    "\033[0;34m"
 #define COLOR_UB_BLUE    "\033[1;4;34m"
-#define COLOR_CYAN    "\033[0;36m"
 #define COLOR_YELLOW  "\033[0;33m"
 #define COLOR_CYAN_BOLD    "\033[1;36m"
 
@@ -262,7 +263,6 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     
-    // Adding header callback to track content length
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &response);
     
@@ -277,28 +277,23 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
         return 0;
     }
     
-    //decompress the downloaded data using zlib
     unsigned char *uncompressed_data = NULL;
     size_t uncompressed_size = 0;
     
-    // Initialize zlib stream
     z_stream strm = {0};
     strm.zalloc = Z_NULL;
     strm.zfree = Z_NULL;
     strm.opaque = Z_NULL;
     
-    // Initialize for gzip decoding (16 + MAX_WBITS for gzip)
     if (inflateInit2(&strm, 16 + MAX_WBITS) != Z_OK) {
         printf("%sError initializing decompression%s\n", COLOR_RED, COLOR_RESET);
         free(response.data);
         return 0;
     }
     
-    // Set up input
     strm.next_in = (Bytef *)response.data;
     strm.avail_in = response.size;
     
-    // Allocate output buffer (estimate 4x the compressed size)
     size_t out_buf_size = response.size * 4;
     uncompressed_data = malloc(out_buf_size);
     if (!uncompressed_data) {
@@ -308,15 +303,12 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
         return 0;
     }
     
-    // Set up output
     strm.next_out = uncompressed_data;
     strm.avail_out = out_buf_size;
     
-    // Decompress
     int ret;
     while ((ret = inflate(&strm, Z_FINISH)) != Z_STREAM_END) {
         if (ret == Z_OK) {
-            // Need more output space
             size_t current_size = out_buf_size;
             out_buf_size *= 2;
             unsigned char *temp = realloc(uncompressed_data, out_buf_size);
@@ -341,39 +333,71 @@ int sync_dictionary(const char *config_dir, HashTable *dictionary, const char *n
     
     uncompressed_size = strm.total_out;
     inflateEnd(&strm);
-    
-    // Create res directory if it doesn't exist
-    char res_dir[512];
-    snprintf(res_dir, sizeof(res_dir), "%s/res", config_dir);
-    mkdir(res_dir, 0755);
-    
-    // Save the uncompressed dictionary
-    char def_path[512];
-    snprintf(def_path, sizeof(def_path), "%s/res/definitions.txt", config_dir);
-    
-    FILE *f = fopen(def_path, "w");
-    if (!f) {
-        // If we can't open the file, try to create the directory structure
-        char res_dir[512];
-        snprintf(res_dir, sizeof(res_dir), "%s/res", config_dir);
-        if (mkdir(res_dir, 0755) != 0 && errno != EEXIST) {
-            printf("%sError: Could not create directory structure%s\n", COLOR_RED, COLOR_RESET);
-            free(response.data);
-            free(uncompressed_data);
-            return 0;
-        }
-        
-        // Try opening the file again
-        f = fopen(def_path, "w");
-        if (!f) {
-            printf("%sError: Could not create definitions file%s\n", COLOR_RED, COLOR_RESET);
-            free(response.data);
-            free(uncompressed_data);
-            return 0;
+
+    // Get home directory
+    const char *home = getenv("HOME");
+    if (!home) {
+        struct passwd *pw = getpwuid(getuid());
+        if (pw) {
+            home = pw->pw_dir;
         }
     }
+
+    if (!home) {
+        printf("%sError: Could not determine home directory%s\n", COLOR_RED, COLOR_RESET);
+        free(response.data);
+        free(uncompressed_data);
+        return 0;
+    }
+
+    // Prepare paths
+    char wtf_dir[512], res_dir[512], def_path[512];
+    snprintf(wtf_dir, sizeof(wtf_dir), "%s/.wtf", home);
+    snprintf(res_dir, sizeof(res_dir), "%s/.wtf/res", home);
+    snprintf(def_path, sizeof(def_path), "%s/.wtf/res/definitions.txt", home);
+
+    // Check if directories exist
+    struct stat st = {0};
+    bool dirs_exist = (stat(wtf_dir, &st) != -1) && (stat(res_dir, &st) != -1);
+
+    // Handle directory creation based on force_sync
+    if (!dirs_exist) {
+        if (!force_sync) {
+            printf("%s Error: Directory structure not found. Use --force to create directories%s\n", 
+                   COLOR_RED, COLOR_RESET);
+            free(response.data);
+            free(uncompressed_data);
+            return 0;
+        }
+
+        // Create directories when force_sync is true
+        if (mkdir(wtf_dir, 0755) != 0 && errno != EEXIST) {
+            printf("%s├─ Error: Could not create .wtf directory%s\n", COLOR_RED, COLOR_RESET);
+            free(response.data);
+            free(uncompressed_data);
+            return 0;
+        }
+
+        if (mkdir(res_dir, 0755) != 0 && errno != EEXIST) {
+            printf("%s├─ Error: Could not create res directory%s\n", COLOR_RED, COLOR_RESET);
+            free(response.data);
+            free(uncompressed_data);
+            return 0;
+        }
+
+        printf("%s├─ %s✓%s Created directory structure%s\n", 
+               COLOR_PRIMARY, COLOR_SUCCESS, COLOR_DIM, COLOR_RESET);
+    }
+
+    // Try to open and write the file
+    FILE *f = fopen(def_path, "w");
+    if (!f) {
+        printf("%s├─ Error: Could not create definitions file%s\n", COLOR_RED, COLOR_RESET);
+        free(response.data);
+        free(uncompressed_data);
+        return 0;
+    }
     
-    // Write uncompressed data to file
     fwrite(uncompressed_data, 1, uncompressed_size, f);
     fclose(f);
     

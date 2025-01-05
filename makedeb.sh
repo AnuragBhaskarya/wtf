@@ -5,7 +5,15 @@ set -e
 
 echo "Building WTF Package..."
 
-# Clean previous builds
+# Extract version from version.h
+VERSION=$(grep -o '"[0-9]*\.[0-9]*\.[0-9]*"' src/version.h | tr -d '"')
+
+# Debug output
+echo "Version found: ${VERSION}"
+
+# Update control file with version from version.h and ensure newline at end
+sed -e "s/@VERSION@/${VERSION}/g" "control.in" | awk 'NR > 1{print l} {l=$0} END{print l; print ""}' > "wtf_package/DEBIAN/control"
+
 rm -f wtf_package/usr/bin/*
 rm -f wtf_package/.wtf/res/*
 
@@ -38,7 +46,6 @@ echo "Building Debian package..."
 dpkg-deb --build wtf_package
 
 # Rename package to include version and architecture
-VERSION=$(grep Version wtf_package/DEBIAN/control | cut -d' ' -f2)
 mv wtf_package.deb wtf_${VERSION}_x86_amd64.deb
 
 echo "Package built successfully: wtf_${VERSION}_x86_amd64.deb"

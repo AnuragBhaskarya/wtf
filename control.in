@@ -1,5 +1,5 @@
 Package: wtf
-Version: 1.2.5
+Version: @VERSION@
 Section: utils
 Architecture: all
 Essential: no
@@ -8,4 +8,3 @@ Description: A lightning-fast command-line dictionary tool for Linux
  WTF is a command-line dictionary tool that helps you
  look up and manage definitions right from your terminal.
  Simple, fast, and easy to use!
-
