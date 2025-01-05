@@ -1,13 +1,14 @@
 # WTF - 🤔?
 
-#### **A lightning-fast command-line dictionary tool for Linux that helps you look up and manage definitions right from your terminal. Simple, fast, and easy to use!**
+#### **A lightning-fast offline command-line dictionary tool for Linux that helps you look up and manage definitions right from your terminal. Simple, fast, and easy to use!**
 <br>
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/AnuragBhaskarya/wtf)
 ![GitHub](https://img.shields.io/github/license/AnuragBhaskarya/wtf)
 <hr>
 
-![wtf_main](https://github.com/user-attachments/assets/173729ea-9472-4928-97e8-91c6c2dfa6e5)
+![Github_Banner_main](https://github.com/user-attachments/assets/737110f7-ba28-4364-b717-0c0fedcc2372)
+
 <hr>
 
 <br>
@@ -28,23 +29,20 @@
 ## 🎨 Visual Elements
 
 ---
-![update](https://github.com/user-attachments/assets/74e9840f-7fa0-4156-bebf-39685b0e908a)
+- **Added `tree-style` display for better readability**
+- **Implemented color-coded output for different message types**
+- **Added ASCII art logo and version display**
+
+![Update](https://github.com/user-attachments/assets/0fb2bda1-0f1d-4a9c-938a-33c2a102a394)
+
 
 <br>
-Our CLI features an elegant and informative update interface:
 
-## 📊 Progress Visualization
-- **Rich Progress Bar**: A vibrant, full-width progress bar `[████████████]` shows real-time download status
-- **Dynamic Updates**: Live display of download speed (e.g., `858.9 KB/s`)
-- **Size Information**: Clear indication of download progress (`2.5/2.5 MB`)
+###  #Our CLI features an elegant and informative update interface:
 
-## 🎨 Aesthetic Elements
+- **Rich Progress Bar**: A vibrant, full-width progress bar shows real-time download status
 - **Clean Typography**: Crisp, coloured font for optimal terminal readability
 - **Status Messages**: Clear, concise update notifications
-  - "`An update of the dictionary available!`"
-  - "`Downloading the update...`"
-  - "`Download complete.`"
-  - "`Update Successful!`
 <br>
 <br>
 
@@ -112,33 +110,56 @@ sudo dpkg -i wtf_*.deb
 ## 🎯 How to Use:
 - **Looking up a Term**
 ```
-wtf is Linux
-Linux: An open-source operating system kernel
+wtf is <term>
+#example: wtf is linux
 ```
+<br>
+
 - **Adding a New Term**
 ```
-
-wtf add Python:A high-level programming language
+wtf add <term>:<meaning>
+#example: wtf add Python:A high-level programming language
 ```
+<br>
 
 - **Removing a Term**
 ```
-wtf remove Python
+wtf remove <term>
+#example: wtf remove Python
 ```
+<br>
 
 - **Recovering a removed Term**
 ```
-wtf recover Python
+wtf recover <term>
+#example: wtf recover Python
 ```
+<br>
+
 - **To update/Sync Dictionary file (definitions.txt)**
 
 ```
 wtf sync   #For regular updates & checks
 ```
 ```
-wtf sync --force    #To force update
+wtf sync --force    #To force update & recover any deletion
 ```
+<br>
 
+- **version check**
+```
+wtf -h   #or
+wtf --version
+```
+<br>
+
+- **To Uninstall ***(Requires sudo permission)*****
+
+```
+wtf uninstall  #or
+wtf --uninstall
+```
+<br>
 
 - **Getting Help**
 ```
