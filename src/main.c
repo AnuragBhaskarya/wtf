@@ -10,6 +10,8 @@
 #include <limits.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <pwd.h>
+#include <sys/types.h>
 
 #define MAX_INPUT_LENGTH 256
 
@@ -49,6 +51,8 @@ void print_help() {
     printf("%s│  └─ Sync dictionary with latest updates%s\n", COLOR_PRIMARY, COLOR_RESET);
     printf("%s├─%s wtf sync --force\n", COLOR_PRIMARY, COLOR_RESET);
     printf("%s│  └─ Force sync dictionary with latest updates%s\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s├─%s sudo wtf uninstall | --uninstall\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s│  └─ Uninstall WTF from your system%s\n", COLOR_PRIMARY, COLOR_RESET);
     printf("%s╰─%s wtf -h | --help\n", COLOR_PRIMARY, COLOR_RESET);
     printf("%s   └─ Show this help menu%s\n\n", COLOR_PRIMARY, COLOR_RESET);
 }
@@ -88,12 +92,40 @@ int getString(char *buffer, size_t bufferSize) {
     return 0;
 }
 
-int main(int argc, char *argv[]) {
-    const char *home_dir = getenv("HOME");
-    if (home_dir == NULL) {
-        fprintf(stderr, "Error: Unable to get home directory.\n");
-        return 1;
+char *get_real_home_directory() {
+    // Get the SUDO_USER environment variable
+    const char *sudo_user = getenv("SUDO_USER");
+    struct passwd *pw;
+
+    if (sudo_user != NULL) {
+        // If running with sudo, get the real user's info
+        pw = getpwnam(sudo_user);
+    } else {
+        // If not running with sudo, get current user's info
+        pw = getpwuid(getuid());
     }
+
+    if (pw != NULL) {
+        return pw->pw_dir;
+    }
+
+    // Fallback to $HOME environment variable
+    return getenv("HOME");
+}
+
+int main(int argc, char *argv[]) {
+    
+    int exit_code = 0; 
+    
+    // Get home directory first
+    char *home_dir = get_real_home_directory();
+    if (home_dir == NULL) {
+        fprintf(stderr, "%s│%s\n", COLOR_RED, COLOR_RESET);
+        fprintf(stderr, "%s╰─ Error%s: Could not determine user's home directory\n\n", 
+                COLOR_RED, COLOR_RESET);
+        return 1;  // Return directly since we haven't allocated anything yet
+    }
+
     
     char config_dir[PATH_MAX];
     char definitions_path[PATH_MAX];
@@ -325,7 +357,21 @@ int main(int argc, char *argv[]) {
             metadata.last_sha[sizeof(metadata.last_sha) - 1] = '\0';
             save_sync_metadata(config_dir, &metadata);
         }
-    } else if (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
+    }
+    else if (strcmp(argv[1], "uninstall") == 0 || strcmp(argv[1], "--uninstall") == 0) {
+        if (argc > 2) {
+            printf("\n%s╭─ Error%s: Invalid parameter %s'%s'%s\n", COLOR_RED, COLOR_RESET, COLOR_YELLOW, argv[2], COLOR_RESET);
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s├─%s Correct usage: %ssudo wtf --uninstall%s or %ssudo wtf uninstall%s\n",COLOR_RED, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s╰─%s use it with %ssudo%s privileges to uninstall wtf\n\n",COLOR_RED, COLOR_RESET, COLOR_YELLOW, COLOR_RESET);
+            goto cleanup;
+        }
+        exit_code = handle_uninstall_command();
+        goto cleanup;
+    }
+   
+    else if (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
         if (argc > 2) {
             printf("\n%s╭─ Error%s: Invalid parameter %s'%s'%s\n", COLOR_RED, COLOR_RESET, COLOR_YELLOW, argv[2], COLOR_RESET);
             printf("%s│%s\n",COLOR_RED, COLOR_RESET);
@@ -350,5 +396,5 @@ int main(int argc, char *argv[]) {
             free_hash_table(removed_dict);
             removed_dict = NULL;
         }
-        return 0;
+        return exit_code;
     }

@@ -6,7 +6,15 @@
 #include "file_utils.h"
 #include "network_sync.h"
 #include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <dirent.h>
+#include <time.h>
 #include <unistd.h>
+#include <limits.h>
+#include <errno.h>
+#include <stdbool.h>
 
 #define MAX_INPUT_LENGTH 256
 
@@ -391,4 +399,118 @@ void handle_recover_command(HashTable *removed_dict, const char *removed_path, c
     }
     
     free_definition_list(removed_defs);
+}
+
+int handle_uninstall_command(void) {
+    if (geteuid() != 0) {
+        printf("%sError: Uninstall requires root permissions. Please run with sudo.%s\n", 
+               COLOR_RED, COLOR_RESET);
+        return 0;
+    }
+
+    printf("%s╭─ Uninstalling WTF...%s\n", COLOR_PRIMARY, COLOR_RESET);
+    printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
+
+    // Create backup directory
+    char backup_dir[PATH_MAX];
+    snprintf(backup_dir, sizeof(backup_dir), "/tmp/wtf_backup_%ld", (long)time(NULL));
+    if (mkdir(backup_dir, 0700) == 0) {
+        char backup_cmd[PATH_MAX * 2];
+        snprintf(backup_cmd, sizeof(backup_cmd), 
+                "cp /usr/bin/wtf %s/ 2>/dev/null", backup_dir);
+        if (system(backup_cmd) != 0) {
+            printf("%s├─ %s!%s Warning: Failed to create backup files%s\n", 
+                   COLOR_PRIMARY, COLOR_YELLOW, COLOR_DIM, COLOR_RESET);
+        }
+    }
+
+    printf("%s├─ Starting uninstallation process...%s\n", COLOR_PRIMARY, COLOR_RESET);
+
+    // Try dpkg first
+    printf("%s├─ Checking for package installation...%s\n", COLOR_PRIMARY, COLOR_RESET);
+    bool is_dpkg_installed = (system("dpkg -s WTF >/dev/null 2>&1") == 0);
+
+    bool removal_successful = true;
+
+    if (is_dpkg_installed) {
+        // Handle dpkg uninstallation
+        printf("%s├─ Removing dpkg package...%s\n", COLOR_PRIMARY, COLOR_RESET);
+        if (system("dpkg -r WTF 2>/dev/null") != 0) {
+            printf("%s├─ %s✗%s Failed to remove package%s\n", 
+                   COLOR_PRIMARY, COLOR_RED, COLOR_DIM, COLOR_RESET);
+            removal_successful = false;
+        }
+        if (system("dpkg -P WTF 2>/dev/null") != 0) {
+            printf("%s├─ %s!%s Warning: Package purge returned non-zero status%s\n", 
+                   COLOR_PRIMARY, COLOR_YELLOW, COLOR_DIM, COLOR_RESET);
+        }
+    } else {
+        // Handle makefile installation cleanup
+        printf("%s├─ Removing installed files...%s\n", COLOR_PRIMARY, COLOR_RESET);
+        
+        // Remove binary
+        if (unlink("/usr/bin/wtf") != 0 && errno != ENOENT) {
+            printf("%s├─ %s✗%s Failed to remove /usr/bin/wtf%s\n", 
+                   COLOR_PRIMARY, COLOR_RED, COLOR_DIM, COLOR_RESET);
+            removal_successful = false;
+        } else {
+            printf("%s├─ %s✓%s Removed binary from /usr/bin/wtf%s\n", 
+                   COLOR_PRIMARY, COLOR_SUCCESS, COLOR_DIM, COLOR_RESET);
+        }
+    }
+
+    // Remove .wtf directories for all users
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir("/home")) != NULL) {
+        while ((ent = readdir(dir)) != NULL) {
+            if (ent->d_type == DT_DIR && 
+                strcmp(ent->d_name, ".") != 0 && 
+                strcmp(ent->d_name, "..") != 0) {
+                
+                char wtf_path[PATH_MAX];
+                snprintf(wtf_path, sizeof(wtf_path), "/home/%s/.wtf", ent->d_name);
+                
+                struct stat st;
+                if (stat(wtf_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+                    char rm_cmd[PATH_MAX + 10];
+                    snprintf(rm_cmd, sizeof(rm_cmd), "rm -rf %s", wtf_path);
+                    if (system(rm_cmd) == 0) {
+                        printf("%s├─ %s✓%s Removed %s%s\n", 
+                               COLOR_PRIMARY, COLOR_SUCCESS, COLOR_DIM, wtf_path, COLOR_RESET);
+                    } else {
+                        printf("%s├─ %s✗%s Failed to remove %s%s\n", 
+                               COLOR_PRIMARY, COLOR_RED, COLOR_DIM, wtf_path, COLOR_RESET);
+                        removal_successful = false;
+                    }
+                }
+            }
+        }
+        closedir(dir);
+    }
+
+    // Check if the main binary still exists
+    if (access("/usr/bin/wtf", F_OK) == 0) {
+        removal_successful = false;
+    }
+
+    if (removal_successful) {
+        // Clean up backup if everything went well
+        char rm_backup_cmd[PATH_MAX * 2];
+        snprintf(rm_backup_cmd, sizeof(rm_backup_cmd), "rm -rf %s 2>/dev/null", backup_dir);
+        if (system(rm_backup_cmd) != 0) {
+            printf("%s├─ %s!%s Warning: Failed to remove backup files at %s%s\n", 
+                   COLOR_PRIMARY, COLOR_YELLOW, COLOR_DIM, backup_dir, COLOR_RESET);
+        }
+        
+        printf("%s╰─ %s✓%s WTF has been successfully uninstalled%s\n\n", 
+               COLOR_PRIMARY, COLOR_SUCCESS, COLOR_PRIMARY, COLOR_RESET);
+        return 1;
+    } else {
+        printf("%s╰─ %s!%s Uninstallation completed with some warnings%s\n", 
+               COLOR_PRIMARY, COLOR_YELLOW, COLOR_PRIMARY, COLOR_RESET);
+        printf("%s    Backup files are stored in: %s%s\n\n", 
+               COLOR_DIM, backup_dir, COLOR_RESET);
+        return 0;
+    }
 }
