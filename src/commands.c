@@ -11,14 +11,19 @@
 #define MAX_INPUT_LENGTH 256
 
 // Helper function to wrap text with proper indentation
-void print_wrapped_definition(const char* text, int indent_size, int term_width) {
+void print_wrapped_definition(const char* text, int indent_size, int term_width, int is_last_item) {
     int line_pos = indent_size;
     int text_len = strlen(text);
     
     // Print first part (after the term:)
     for (int i = 0; i < text_len; i++) {
         if (line_pos >= term_width - 1) {  // -1 for safety margin
-            printf("\n%s│%s%*s", COLOR_PRIMARY, COLOR_RESET, indent_size - 2, "");
+            // Use different prefix based on whether it's the last item
+            if (is_last_item) {
+                printf("\n%s %s%*s", COLOR_PRIMARY, COLOR_RESET, indent_size - 2, "");
+            } else {
+                printf("\n%s│%s%*s", COLOR_PRIMARY, COLOR_RESET, indent_size - 2, "");
+            }
             line_pos = indent_size;
         }
         putchar(text[i]);
@@ -78,9 +83,10 @@ void handle_is_command(HashTable *dictionary, HashTable *removed_dict, char **ar
                             definitions->keys[i],
                             COLOR_RESET);
                     }
-                    
-                    print_wrapped_definition(definitions->definitions[i], indent_size, term_width);
-                    
+                    print_wrapped_definition(definitions->definitions[i], 
+                                           indent_size, 
+                                           term_width, 
+                                           i == definitions->count - 1);
                     if (i < definitions->count - 1) {
                         printf("\n%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
                     }
@@ -89,12 +95,14 @@ void handle_is_command(HashTable *dictionary, HashTable *removed_dict, char **ar
             printf("\n");
             printf("\n");
         } else {
-            printf("Lol I don't know what '%s' means.\n", term);
+            printf("%s│%s\n",COLOR_PRIMARY, COLOR_RESET);
+            printf("%s╰─%sLol.. I don't know what `%s%s%s` means\n\n", COLOR_PRIMARY, COLOR_RESET, COLOR_YELLOW, term, COLOR_RESET);
         }
         
         free_definition_list(definitions);
     } else {
-        printf("Lol I don't know what '%s' means.\n", term);
+        printf("%s│%s\n",COLOR_PRIMARY, COLOR_RESET);
+        printf("%s╰─%sLol.. I don't know what `%s%s%s` means\n\n", COLOR_PRIMARY, COLOR_RESET, COLOR_YELLOW, term, COLOR_RESET);
     }
 }
 
@@ -168,7 +176,7 @@ void handle_remove_command(HashTable *dictionary, HashTable *removed_dict, const
             filtered->keys[0],
             COLOR_RESET);
         
-        print_wrapped_definition(filtered->definitions[0], indent_size, term_width);
+        print_wrapped_definition(filtered->definitions[0], indent_size, term_width, 1);
         printf("\n\n");
         
         printf("\nAre you sure you want to remove this definition? [Y/n]: ");
@@ -212,7 +220,7 @@ void handle_remove_command(HashTable *dictionary, HashTable *removed_dict, const
                     COLOR_RESET);
             }
             
-            print_wrapped_definition(filtered->definitions[i], indent_size, term_width);
+            print_wrapped_definition(filtered->definitions[i], indent_size, term_width, i == filtered->count - 1);
             
             if (i < filtered->count - 1) {
                 printf("\n%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
@@ -292,7 +300,7 @@ void handle_recover_command(HashTable *removed_dict, const char *removed_path, c
             removed_defs->keys[0],
             COLOR_RESET);
         
-        print_wrapped_definition(removed_defs->definitions[0], indent_size, term_width);
+        print_wrapped_definition(removed_defs->definitions[0], indent_size, term_width, 1);
         printf("\n\n");
         
         printf("\nAre you sure you want to recover this definition? [Y/n]: ");
@@ -337,7 +345,7 @@ void handle_recover_command(HashTable *removed_dict, const char *removed_path, c
                     COLOR_RESET);
             }
             
-            print_wrapped_definition(removed_defs->definitions[i], indent_size, term_width);
+            print_wrapped_definition(removed_defs->definitions[i], indent_size, term_width, i == removed_defs->count - 1);
             
             if (i < removed_defs->count - 1) {
                 printf("\n%s│%s\n", COLOR_PRIMARY, COLOR_RESET);

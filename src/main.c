@@ -159,7 +159,8 @@ int main(int argc, char *argv[]) {
                         current_year != last_year);
     
     if (argc < 2) {
-        printf("Error: Missing arguments. Use `wtf -h` for help.\n");
+        printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+        printf("%s╰─ Error%s: Missing arguments. Use `%swtf -h%s` for help\n\n", COLOR_RED, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
         goto cleanup;
     }
 
@@ -199,7 +200,8 @@ int main(int argc, char *argv[]) {
     // Only try to load definitions if we're not doing a force sync
     if (!is_force_sync) {
         if (!load_definitions(definitions_path, dictionary)) {
-            fprintf(stderr, "Error: Could not load main definitions. try running \"wtf sync --force\"\n");
+            fprintf(stderr,"%s│%s\n",COLOR_RED, COLOR_RESET);
+            fprintf(stderr, "%s╰─ Error%s: Could not load main definitions. try running `%swtf sync --force%s`\n\n", COLOR_RED, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
             goto cleanup;
         }
     }
@@ -213,7 +215,8 @@ int main(int argc, char *argv[]) {
     // Handle commands
     if (strcmp(argv[1], "is") == 0) {
         if (argc < 3) {
-            printf("\n%s╰─ Error%s: No term provided. Use `wtf is <term>`\n\n", COLOR_RED, COLOR_RESET);
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s╰─ Error%s: No term provided. Use `%swtf is <term>%s`\n\n", COLOR_RED, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
             goto cleanup;
         }
         handle_is_command(dictionary, removed_dict, argv, argc);
@@ -226,14 +229,16 @@ int main(int argc, char *argv[]) {
             
     } else if (strcmp(argv[1], "remove") == 0) {
         if (argc < 3) {
-            printf("\n%s╰─ Error%s: No term provided. Use `wtf remove <term>`\n\n", COLOR_RED, COLOR_RESET);
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s╰─ Error%s: No term provided. Use `%swtf remove <term>%s`\n\n", COLOR_RED, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
             goto cleanup;
         }
         handle_remove_command(dictionary, removed_dict, removed_path, argv, argc);
     }
     else if (strcmp(argv[1], "add") == 0) {
         if (argc < 3) {
-            printf("Error: No term provided. Use `wtf add <term>:<definition>`.\n");
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s╰─ Error%s: No term provided. Use `%swtf add <term>:<definition>%s`.\n\n",COLOR_RED, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
             goto cleanup;
         }
 
@@ -247,7 +252,8 @@ int main(int argc, char *argv[]) {
         char *definition = strtok(NULL, "");
 
         if (!term || !definition) {
-            printf("Error: Invalid format. Use `wtf add <term>:<definition>`.\n");
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s╰─ Error%s: Invalid Format. Use `%swtf add <term>:<definition>%s`.\n\n",COLOR_RED, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
             goto cleanup;
         }
         
@@ -258,7 +264,8 @@ int main(int argc, char *argv[]) {
         }
     } else if (strcmp(argv[1], "recover") == 0) {
         if (argc < 3) {
-            printf("\n%s╰─ Error%s: No term provided. Use `wtf recover <term>`\n\n", COLOR_RED, COLOR_RESET);
+            printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+            printf("%s╰─ Error%s: No term provided. Use `%swtf recover <term>%s`\n\n", COLOR_RED, COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
             goto cleanup;
         }
         handle_recover_command(removed_dict, removed_path, argv, argc);
@@ -299,13 +306,14 @@ int main(int argc, char *argv[]) {
                 printf("%s╰─ %s✓%s Dictionary is up-to-date!%s\n\n", COLOR_PRIMARY, COLOR_SUCCESS, COLOR_PRIMARY, COLOR_RESET);
                 break;
             case SYNC_NO_INTERNET:
-                printf("%s│%s\n", COLOR_PRIMARY, COLOR_RESET);
-                printf("%s╰─ %s! Check Your Internet Connection!%s\n\n", COLOR_PRIMARY, COLOR_RED, COLOR_RESET);
+                printf("%s│%s\n", COLOR_RED, COLOR_RESET);
+                printf("%s╰─ %s! Check Your Internet Connection!\n\n", COLOR_RED, COLOR_RESET);
                 break;
             case SYNC_NEEDED:
                 break;
             case SYNC_ERROR:
-                printf("%sError: Could not sync dictionary%s\n", COLOR_RED, COLOR_RESET);
+                printf("%s│%s\n", COLOR_RED, COLOR_RESET);
+                printf("%s╰─ Error%s: Could not sync dictionary\n\n", COLOR_RED, COLOR_RESET);
                 break;
         }
         
@@ -329,7 +337,8 @@ int main(int argc, char *argv[]) {
         print_version();
         goto cleanup;
     } else {
-        printf("Error: Unknown command '%s'. Use `wtf -h` for help.\n", argv[1]);
+        printf("%s│%s\n",COLOR_RED, COLOR_RESET);
+        printf("%s╰─ Error%s: Unknown command '%s%s%s'. Use `%swtf -h%s` for help.\n", COLOR_RED, COLOR_RESET, COLOR_YELLOW, argv[1], COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
     }
     
     cleanup:
