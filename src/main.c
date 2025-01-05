@@ -172,23 +172,7 @@ int main(int argc, char *argv[]) {
     time_t current_time = time(NULL);
     SyncMetadata metadata;
     load_sync_metadata(config_dir, &metadata);
-    
-    // Get current date parts
-    struct tm *tm_now = localtime(&current_time);
-    int current_day = tm_now->tm_mday;
-    int current_month = tm_now->tm_mon;
-    int current_year = tm_now->tm_year;
-    
-    // Get last sync date parts
-    struct tm *tm_last = localtime(&metadata.last_sync);
-    int last_day = tm_last->tm_mday;
-    int last_month = tm_last->tm_mon;
-    int last_year = tm_last->tm_year;
-    
-    // Check if it's a new day
-    int is_new_day = (current_day != last_day || 
-                        current_month != last_month || 
-                        current_year != last_year);
+      
     
     if (argc < 2) {
         printf("%s│%s\n",COLOR_RED, COLOR_RESET);
@@ -255,7 +239,8 @@ int main(int argc, char *argv[]) {
         
         // Show definition immediately without checking for updates
         // After showing the definition, check for updates in background
-        if (is_new_day || (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
+        if ((current_time - metadata.last_sync) >= SYNC_INTERVAL) {
+            printf("%s► Checking for updates...%s\n\n", COLOR_DIM, COLOR_RESET);
             check_and_sync(config_dir, dictionary, false);
         }
             
@@ -291,7 +276,8 @@ int main(int argc, char *argv[]) {
         
         handle_add_command(dictionary, added_path, term, definition);
         // Check for updates after adding
-        if (is_new_day || (current_time - metadata.last_sync) >= SYNC_INTERVAL) {
+        if ((current_time - metadata.last_sync) >= SYNC_INTERVAL) {
+            printf("%s► Checking for updates...%s\n\n", COLOR_DIM, COLOR_RESET);
             check_and_sync(config_dir, dictionary, false);
         }
     } else if (strcmp(argv[1], "recover") == 0) {
@@ -303,7 +289,7 @@ int main(int argc, char *argv[]) {
         handle_recover_command(removed_dict, removed_path, argv, argc);
     } // Only check for updates if:
     // 1. It's a new day and this is the first command
-    // 2. Explicit sync command is used
+    // 2. Explicit sync --force command is used
     else if (strcmp(argv[1], "sync") == 0) {
         // Force sync when explicit command is used
         bool force_sync = false;
@@ -384,7 +370,7 @@ int main(int argc, char *argv[]) {
         goto cleanup;
     } else {
         printf("%s│%s\n",COLOR_RED, COLOR_RESET);
-        printf("%s╰─ Error%s: Unknown command '%s%s%s'. Use `%swtf -h%s` for help.\n", COLOR_RED, COLOR_RESET, COLOR_YELLOW, argv[1], COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
+        printf("%s╰─ Error%s: Unknown command '%s%s%s'. Use `%swtf -h%s` for help.\n\n", COLOR_RED, COLOR_RESET, COLOR_YELLOW, argv[1], COLOR_RESET, COLOR_PRIMARY, COLOR_RESET);
     }
     
     cleanup:

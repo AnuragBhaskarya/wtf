@@ -14,7 +14,7 @@
 #define GITHUB_REPO "AnuragBhaskarya/wtf"
 #define DEFINITIONS_PATH ".wtf/res/definitions.txt"
 #define SYNC_METADATA_FILE "sync.meta"
-#define SYNC_INTERVAL (3 * 60 * 60) // 3 hours interval
+#define SYNC_INTERVAL  172800  // 2 Days interval
 
 // ANSI color codes
 #define COLOR_GREEN "\033[0;32m"
