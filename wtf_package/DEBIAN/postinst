@@ -6,6 +6,26 @@ set -e
 # Get the version being installed
 VERSION="$2"
 
+# Function to get real user
+get_real_user() {
+    if [ -n "$SUDO_USER" ]; then
+        echo "$SUDO_USER"
+    elif [ -n "$PKEXEC_UID" ]; then
+        echo "$(id -nu "$PKEXEC_UID")"
+    elif [ -n "$REAL_USER" ]; then
+        echo "$REAL_USER"
+    else
+        # Get the user running the display server
+        local display_user=$(who | grep -F '(:0)' | head -n1 | cut -d ' ' -f1)
+        if [ -n "$display_user" ]; then
+            echo "$display_user"
+        else
+            # Fallback: try to get the first non-root user with a home directory
+            echo "$(getent passwd | grep /home | cut -d: -f1 | head -n1)"
+        fi
+    fi
+}
+
 # Detect architecture
 ARCH=$(uname -m)
 
@@ -29,13 +49,25 @@ fi
 ln -sf "$BINARY" /usr/bin/wtf
 chmod +x /usr/bin/wtf
 
-# Set up directories and files
-if [ -z "${SUDO_USER}" ]; then
-    echo "Error: SUDO_USER is not set" >&2
+# Get the real user
+REAL_USER=$(get_real_user)
+
+if [ -z "$REAL_USER" ]; then
+    echo "Error: Could not determine the actual user" >&2
     exit 1
 fi
 
-USER_HOME=$(eval echo ~${SUDO_USER})
+# Get user's home directory
+USER_HOME=$(eval echo ~${REAL_USER})
+if [ -z "$USER_HOME" ]; then
+    USER_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+fi
+
+if [ -z "$USER_HOME" ]; then
+    echo "Error: Could not determine home directory" >&2
+    exit 1
+fi
+
 WTF_DIR="$USER_HOME/.wtf"
 WTF_RES_DIR="$WTF_DIR/res"
 
@@ -58,6 +90,8 @@ if [ ! -f "$WTF_RES_DIR/removed.txt" ]; then
 fi
 
 # Set proper ownership
-chown -R ${SUDO_USER}:${SUDO_USER} "$WTF_DIR"
+chown -R "${REAL_USER}:${REAL_USER}" "$WTF_DIR"
+chmod -R 755 "$WTF_DIR"
+chmod 644 "$WTF_RES_DIR"/*.txt
 
 echo "Successfully installed WTF for architecture: $ARCH"
